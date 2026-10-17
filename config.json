@@ -61,6 +61,22 @@
         "cfg_scale": { "node": "8", "input": "cfg" },
         "filename_prefix": { "node": "10", "input": "filename_prefix" }
       }
+    },
+    "moss-image-sft-enhanced": {
+      "description": "MOSS-Image SFT mit lokalem Qwen Prompt Enhance",
+      "file": "workflows/moss_image_sft_enhanced_api.json",
+      "dimension_multiple": 16,
+      "bindings": {
+        "prompt": { "node": "17", "input": "string_b" },
+        "negative_prompt": { "node": "5", "input": "text" },
+        "width": { "node": "6", "input": "width" },
+        "height": { "node": "6", "input": "height" },
+        "batch_size": { "node": "6", "input": "batch_size" },
+        "seed": { "node": "8", "input": "seed" },
+        "steps": { "node": "8", "input": "steps" },
+        "cfg_scale": { "node": "8", "input": "cfg" },
+        "filename_prefix": { "node": "10", "input": "filename_prefix" }
+      }
     }
   },
   "video_workflows": {

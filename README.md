@@ -41,6 +41,8 @@ Der Workflow verwendet vier Schritte, `res_multistep`, den Simple Scheduler und 
 - 25 Schritte, `er_sde`, Simple Scheduler, CFG 2.5
 - Skip-Layer-Guidance auf Single-Layer 22
 
+Das zusaetzliche Profil `moss-image-sft-enhanced` schaltet vor MOSS denselben lokalen Prompt-Enhancer wie `krea2-turbo-enhanced`. Es verwendet dafuer zusaetzlich `qwen3vl_4b_fp8_scaled.safetensors`, das fuer den vorhandenen Krea-Workflow bereits installiert ist. Der erweiterte Prompt wird anschliessend mit dem separaten MOSS-Textencoder verarbeitet; ein Cloud-Dienst, API-Key oder weiterer Modelldownload ist nicht erforderlich.
+
 Die drei Dateien belegen zusammen ungefaehr 13 GB. Der mitgelieferte Downloader speichert laufende Downloads als `.part`, setzt sie nach Verbindungsabbruechen bytegenau fort und wiederholt temporaere Fehler automatisch:
 
 ```powershell
@@ -97,7 +99,7 @@ In Discord stehen dann zur Verfuegung:
 /video prompt:Eine Drohnenfahrt ueber eine neblige Bergstadt seitenverhaeltnis:16:9 dauer:5 seed:-1
 ```
 
-Fuer Prompt-Enhancement im Parameter `workflow` das Profil `krea2-turbo-enhanced` auswaehlen. Es nutzt den bereits geladenen Qwen/Krea-Textencoder lokal und benoetigt keinen externen API-Key. Ohne Auswahl wird `moss-image-sft` als Standard verwendet.
+Fuer Prompt-Enhancement im Parameter `workflow` je nach Bildmodell `krea2-turbo-enhanced` oder `moss-image-sft-enhanced` auswaehlen. Beide nutzen den bereits installierten Qwen/Krea-Textencoder lokal und benoetigen keinen externen API-Key. Ohne Auswahl wird weiterhin `moss-image-sft` als Standard verwendet.
 
 Fuer MOSS-Image im Parameter `workflow` das Profil `moss-image-sft` auswaehlen. MOSS benoetigt Bildgroessen in 16er-Schritten. Der Bot rundet die vorhandenen Seitenverhaeltnis-Presets fuer dieses Profil automatisch auf das naechste gueltige Raster; Krea-Aufloesungen bleiben unveraendert. Das MOSS-Profil besitzt derzeit keine LoRA-Slots, damit nicht versehentlich inkompatible Krea-LoRAs geladen werden.
 

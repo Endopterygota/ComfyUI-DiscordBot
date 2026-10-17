@@ -298,6 +298,24 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(graph["8"]["inputs"]["steps"], 25)
         self.assertEqual(graph["8"]["inputs"]["sampler_name"], "er_sde")
 
+    def test_moss_enhanced_workflow_routes_generated_text_into_moss(self) -> None:
+        workflow_path = (
+            Path(__file__).resolve().parents[1]
+            / "workflows"
+            / "moss_image_sft_enhanced_api.json"
+        )
+        graph = load_api_workflow(workflow_path)
+        self.assertEqual(graph["2"]["inputs"]["type"], "moss_image")
+        self.assertEqual(graph["4"]["inputs"]["clip"], ["2", 0])
+        self.assertEqual(graph["4"]["inputs"]["text"], ["16", 0])
+        self.assertEqual(graph["11"]["inputs"]["type"], "krea2")
+        self.assertEqual(
+            graph["11"]["inputs"]["clip_name"],
+            "qwen3vl_4b_fp8_scaled.safetensors",
+        )
+        self.assertEqual(graph["16"]["inputs"]["clip"], ["11", 0])
+        self.assertEqual(graph["16"]["inputs"]["prompt"], ["17", 0])
+
     def test_video_renderer_binds_prompt_dimensions_duration_and_seed(self) -> None:
         graph = {
             "1": {
