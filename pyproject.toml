@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "comfyui-discord-bot"
+version = "0.1.0"
+description = "Discord slash-command bot for a local ComfyUI instance"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "aiohttp>=3.10,<4",
+  "discord.py>=2.4,<3"
+]
+
+[project.optional-dependencies]
+build = ["pyinstaller>=6.11,<7"]
+test = ["pytest>=8,<9"]
+
+[project.scripts]
+comfy-discord-bot = "comfy_discord.__main__:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+

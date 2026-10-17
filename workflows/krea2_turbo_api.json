@@ -1,0 +1,83 @@
+{
+  "3": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["51", 0],
+      "positive": ["6", 0],
+      "negative": ["13", 0],
+      "latent_image": ["5", 0],
+      "seed": 1044310853810925,
+      "steps": 8,
+      "cfg": 1.2,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1.0
+    }
+  },
+  "5": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": 1024,
+      "height": 1024,
+      "batch_size": 1
+    }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["11", 0],
+      "text": "A cinematic image"
+    }
+  },
+  "8": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["3", 0],
+      "vae": ["12", 0]
+    }
+  },
+  "10": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "krea2_turbo_fp8_scaled.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "11": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen3vl_4b_fp8_scaled.safetensors",
+      "type": "krea2",
+      "device": "default"
+    }
+  },
+  "12": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "qwen_image_vae.safetensors"
+    }
+  },
+  "13": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["11", 0],
+      "text": "worst quality, low quality,bad anatomy,bad proportions,extra digits,extra legs,extra arms,disfigured,blurry eyes,lowres,mutated hands,bad hands,signature,watermark,artist name,username,patreon username, multiple views, furry, white outline, loli, (3d, render, cgi, doll, painting, fake, 3d modeling:1.4), (worst quality, low quality:1.4), child, deformed, malformed, bad hands, bad fingers, bad eyes, bad teeth, long body, blurry, duplicated, cloned, duplicate body parts, disfigured, extra limbs, fused fingers, extra fingers, twisted, distorted, malformed hands, malformed fingers, mutated hands and fingers, conjoined, missing limbs, bad anatomy, bad proportions, closed eyes, watery eyes, crossed eyes, dark circles, red eyes, bloodshot eyes, drooping eyelids, asymmetrical eyes, bulging eyes, glassy eyes, lifeless eyes, blurry eyes, pixelated eyes, inexpressive eyes, dull eyes, empty eyes, hollow eyes, too small eyes, too large eyes, wide eyes"
+    }
+  },
+  "29": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "Discord/Krea2_turbo",
+      "images": ["8", 0]
+    }
+  },
+  "51": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": ["10", 0],
+      "lora_name": "Stylized_Ink_Wash_krea2_3296367_epoch_9.safetensors",
+      "strength_model": 1.0
+    }
+  }
+}
+

@@ -1,0 +1,23 @@
+{
+  "default_workflow": "krea2-turbo",
+  "max_prompt_length": 4000,
+  "max_files_per_message": 10,
+  "workflows": {
+    "krea2-turbo": {
+      "description": "Krea 2 Turbo mit negativem Prompt und Stylized Ink Wash LoRA",
+      "file": "workflows/krea2_turbo_api.json",
+      "bindings": {
+        "prompt": { "node": "6", "input": "text" },
+        "negative_prompt": { "node": "13", "input": "text" },
+        "width": { "node": "5", "input": "width" },
+        "height": { "node": "5", "input": "height" },
+        "batch_size": { "node": "5", "input": "batch_size" },
+        "seed": { "node": "3", "input": "seed" },
+        "lora_name": { "node": "51", "input": "lora_name" },
+        "lora_strength": { "node": "51", "input": "strength_model" },
+        "filename_prefix": { "node": "29", "input": "filename_prefix" }
+      }
+    }
+  }
+}
+
