@@ -23,6 +23,7 @@ class WorkflowProfile:
     description: str
     file: Path
     bindings: dict[str, Binding]
+    dimension_multiple: int = 8
 
 
 @dataclass(frozen=True)
@@ -110,11 +111,22 @@ def _load_workflow_profiles(
             if not isinstance(binding, dict) or "node" not in binding or "input" not in binding:
                 raise ConfigError(f"Ungueltiges Binding {parameter!r} in Workflow {name!r}.")
             bindings[parameter] = Binding(str(binding["node"]), str(binding["input"]))
+        try:
+            dimension_multiple = int(entry.get("dimension_multiple", 8))
+        except (TypeError, ValueError) as exc:
+            raise ConfigError(
+                f"dimension_multiple in Workflow {name!r} muss eine ganze Zahl sein."
+            ) from exc
+        if dimension_multiple < 1:
+            raise ConfigError(
+                f"dimension_multiple in Workflow {name!r} muss mindestens 1 sein."
+            )
         profiles[name] = WorkflowProfile(
             name=name,
             description=str(entry.get("description", name)),
             file=workflow_file.resolve(),
             bindings=bindings,
+            dimension_multiple=dimension_multiple,
         )
     return profiles
 

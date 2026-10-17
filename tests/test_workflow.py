@@ -193,6 +193,61 @@ class WorkflowTests(unittest.TestCase):
                     filename_prefix="x",
                 )
 
+    def test_profile_specific_dimension_grid_and_normalization(self) -> None:
+        graph = {
+            "1": {"class_type": "Text", "inputs": {"text": "old"}},
+            "2": {"class_type": "Sampler", "inputs": {"seed": 1}},
+            "3": {
+                "class_type": "Latent",
+                "inputs": {"width": 512, "height": 512, "batch_size": 1},
+            },
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "workflow.json"
+            path.write_text(json.dumps(graph), encoding="utf-8")
+            profile = WorkflowProfile(
+                name="moss",
+                description="moss",
+                file=path,
+                bindings={
+                    "prompt": Binding("1", "text"),
+                    "seed": Binding("2", "seed"),
+                    "width": Binding("3", "width"),
+                    "height": Binding("3", "height"),
+                    "batch_size": Binding("3", "batch_size"),
+                },
+                dimension_multiple=16,
+            )
+            renderer = WorkflowRenderer(profile)
+            self.assertEqual(renderer.normalize_dimensions(888, 1184), (896, 1184))
+            with self.assertRaisesRegex(WorkflowError, "durch 16"):
+                renderer.render(
+                    prompt="x",
+                    negative_prompt=None,
+                    width=888,
+                    height=1184,
+                    batch_size=1,
+                    seed=1,
+                    lora_name=None,
+                    lora_strength=None,
+                    filename_prefix="x",
+                )
+
+    def test_moss_workflow_has_expected_native_model_stack(self) -> None:
+        workflow_path = (
+            Path(__file__).resolve().parents[1]
+            / "workflows"
+            / "moss_image_sft_api.json"
+        )
+        graph = load_api_workflow(workflow_path)
+        self.assertEqual(
+            graph["1"]["inputs"]["unet_name"],
+            "moss_image_sft_int8_convrot.safetensors",
+        )
+        self.assertEqual(graph["2"]["inputs"]["type"], "moss_image")
+        self.assertEqual(graph["8"]["inputs"]["steps"], 25)
+        self.assertEqual(graph["8"]["inputs"]["sampler_name"], "er_sde")
+
     def test_video_renderer_binds_prompt_dimensions_duration_and_seed(self) -> None:
         graph = {
             "1": {

@@ -76,6 +76,15 @@ class WorkflowRenderer:
                 graph[binding.node]["inputs"][binding.input] = value
         return graph
 
+    def normalize_dimensions(self, width: int, height: int) -> tuple[int, int]:
+        """Round Discord presets to the workflow's required pixel grid."""
+        multiple = self.profile.dimension_multiple
+
+        def nearest(value: int) -> int:
+            return max(multiple, ((value + multiple // 2) // multiple) * multiple)
+
+        return nearest(width), nearest(height)
+
     def render(
         self,
         *,
@@ -95,8 +104,11 @@ class WorkflowRenderer:
     ) -> RenderedWorkflow:
         if not prompt.strip():
             raise WorkflowError("Der Prompt darf nicht leer sein.")
-        if width % 8 or height % 8:
-            raise WorkflowError("Breite und Hoehe muessen durch 8 teilbar sein.")
+        multiple = self.profile.dimension_multiple
+        if width % multiple or height % multiple:
+            raise WorkflowError(
+                f"Breite und Hoehe muessen durch {multiple} teilbar sein."
+            )
         if not 1 <= batch_size <= 4:
             raise WorkflowError("Es sind 1 bis 4 Bilder pro Auftrag erlaubt.")
 

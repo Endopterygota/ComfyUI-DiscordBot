@@ -221,25 +221,50 @@ class ComfyDiscordBot(discord.Client):
                     return
                 final_width, final_height = preset.width, preset.height
 
+            final_width, final_height = renderer.normalize_dimensions(
+                final_width,
+                final_height,
+            )
+
             try:
-                selected_lora, selected_strength, lora_label = await self._prepare_lora_slot(
-                    lora,
-                    lora_staerke,
-                    slot_name="LoRA 1",
-                    allow_default_strength=True,
-                )
-                selected_lora_2, selected_strength_2, lora_label_2 = await self._prepare_lora_slot(
-                    lora_2,
-                    lora_2_staerke,
-                    slot_name="LoRA 2",
-                    allow_default_strength=False,
-                )
-                selected_lora_3, selected_strength_3, lora_label_3 = await self._prepare_lora_slot(
-                    lora_3,
-                    lora_3_staerke,
-                    slot_name="LoRA 3",
-                    allow_default_strength=False,
-                )
+                if "lora_name" not in renderer.profile.bindings:
+                    if any(
+                        value is not None
+                        for value in (
+                            lora,
+                            lora_staerke,
+                            lora_2,
+                            lora_2_staerke,
+                            lora_3,
+                            lora_3_staerke,
+                        )
+                    ):
+                        raise WorkflowError(
+                            f"Der Workflow {profile_name!r} unterstuetzt keine LoRA-Auswahl."
+                        )
+                    selected_lora = selected_strength = None
+                    selected_lora_2 = selected_strength_2 = None
+                    selected_lora_3 = selected_strength_3 = None
+                    lora_label = lora_label_2 = lora_label_3 = None
+                else:
+                    selected_lora, selected_strength, lora_label = await self._prepare_lora_slot(
+                        lora,
+                        lora_staerke,
+                        slot_name="LoRA 1",
+                        allow_default_strength=True,
+                    )
+                    selected_lora_2, selected_strength_2, lora_label_2 = await self._prepare_lora_slot(
+                        lora_2,
+                        lora_2_staerke,
+                        slot_name="LoRA 2",
+                        allow_default_strength=False,
+                    )
+                    selected_lora_3, selected_strength_3, lora_label_3 = await self._prepare_lora_slot(
+                        lora_3,
+                        lora_3_staerke,
+                        slot_name="LoRA 3",
+                        allow_default_strength=False,
+                    )
             except (ComfyError, WorkflowError) as exc:
                 await interaction.response.send_message(str(exc), ephemeral=True)
                 return
@@ -262,7 +287,7 @@ class ComfyDiscordBot(discord.Client):
                     lora_2_strength=selected_strength_2,
                     lora_3_name=selected_lora_3,
                     lora_3_strength=selected_strength_3,
-                    filename_prefix=f"Discord/{interaction.user.id}/krea2",
+                    filename_prefix=f"Discord/{interaction.user.id}/{profile_name}",
                 )
             except WorkflowError as exc:
                 await interaction.response.send_message(str(exc), ephemeral=True)

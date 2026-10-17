@@ -31,6 +31,27 @@ Die Dateien muessen bereits in den passenden `ComfyUI/models/...`-Ordnern liegen
 
 Der Workflow verwendet vier Schritte, `res_multistep`, den Simple Scheduler und H.264/MP4. INT8 plus Turbo-LoRA ist fuer die vorhandene AMD/ZLUDA-Installation wesentlich praktikabler als der volle Basis-Workflow. ComfyUI selbst muss aktuell genug sein, damit die nativen Nodes `MiniMaxH3ImageToVideo`, `VAEDecodeAudio`, `CreateVideo` und `SaveVideo` vorhanden sind.
 
+## Enthaltener MOSS-Image-Workflow
+
+`workflows/moss_image_sft_api.json` ist ein vollstaendig lokaler Text-zu-Bild-Workflow fuer die native MOSS-Image-Unterstuetzung in ComfyUI. Das Profil `moss-image-sft` verwendet:
+
+- `moss_image_sft_int8_convrot.safetensors`
+- `qwen3.5_9b_w4a8_gptq.safetensors`
+- `flux2-vae.safetensors`
+- 25 Schritte, `er_sde`, Simple Scheduler, CFG 2.5
+- Skip-Layer-Guidance auf Single-Layer 22
+
+Die drei Dateien belegen zusammen ungefaehr 13 GB. Der mitgelieferte Downloader speichert laufende Downloads als `.part`, setzt sie nach Verbindungsabbruechen bytegenau fort und wiederholt temporaere Fehler automatisch:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\scripts\download-moss-models.ps1
+```
+
+Bei einem Abbruch denselben Befehl einfach erneut ausfuehren. Fuer einen anderen ComfyUI-Ordner kann `-ComfyRoot "X:\Pfad\zu\ComfyUI"` angegeben werden. Die native MOSS-Integration erfordert eine aktuelle ComfyUI-Version; ein Cloud-Dienst oder API-Key wird nicht verwendet.
+
+Fuer einen stillen Hintergrundlauf kann zusaetzlich `-Quiet` gesetzt werden. Dabei zeigt `Get-Item "G:\AI_NEW\comfyui-rocm-091926\models\diffusion_models\*.part"` den aktuellen Stand der Teildatei.
+
 ## 1. Discord-App anlegen
 
 1. Im [Discord Developer Portal](https://discord.com/developers/applications) eine Application erstellen.
@@ -77,6 +98,8 @@ In Discord stehen dann zur Verfuegung:
 ```
 
 Fuer Prompt-Enhancement im Parameter `workflow` das Profil `krea2-turbo-enhanced` auswaehlen. Es nutzt den bereits geladenen Qwen/Krea-Textencoder lokal und benoetigt keinen externen API-Key. Ohne Auswahl bleibt `krea2-turbo` der Standard.
+
+Fuer MOSS-Image im Parameter `workflow` das Profil `moss-image-sft` auswaehlen. MOSS benoetigt Bildgroessen in 16er-Schritten. Der Bot rundet die vorhandenen Seitenverhaeltnis-Presets fuer dieses Profil automatisch auf das naechste gueltige Raster; Krea-Aufloesungen bleiben unveraendert. Das MOSS-Profil besitzt derzeit keine LoRA-Slots, damit nicht versehentlich inkompatible Krea-LoRAs geladen werden.
 
 `seitenverhaeltnis` bietet dieselben acht 1-Megapixel-Formate wie ComfyUIs `ResolutionSelector`: `1:1`, `2:3`, `3:2`, `3:4`, `4:3`, `9:16`, `16:9` und `21:9`. Das ausgewaehlte Format ueberschreibt `breite` und `hoehe`. Ohne Auswahl koennen eigene Werte in 8er-Schritten angegeben werden; `breite:888 hoehe:1184` ist daher ebenfalls gueltig.
 
