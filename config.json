@@ -17,6 +17,21 @@
         "lora_strength": { "node": "51", "input": "strength_model" },
         "filename_prefix": { "node": "29", "input": "filename_prefix" }
       }
+    },
+    "krea2-turbo-enhanced": {
+      "description": "Krea 2 Turbo mit lokalem Qwen Prompt Enhance",
+      "file": "workflows/krea2_turbo_enhanced_api.json",
+      "bindings": {
+        "prompt": { "node": "17", "input": "string_b" },
+        "negative_prompt": { "node": "13", "input": "text" },
+        "width": { "node": "5", "input": "width" },
+        "height": { "node": "5", "input": "height" },
+        "batch_size": { "node": "5", "input": "batch_size" },
+        "seed": { "node": "3", "input": "seed" },
+        "lora_name": { "node": "51", "input": "lora_name" },
+        "lora_strength": { "node": "51", "input": "strength_model" },
+        "filename_prefix": { "node": "29", "input": "filename_prefix" }
+      }
     }
   }
 }

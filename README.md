@@ -13,7 +13,8 @@ Der Bot ist GPU-unabhaengig: AMD/CUDA/DirectML/ROCm betrifft nur die vorhandene 
 - `qwen_image_vae.safetensors`
 - aktive `Stylized_Ink_Wash_krea2_3296367_epoch_9.safetensors`-LoRA
 - 8 Schritte, Euler, Simple Scheduler, CFG 1.2
-- Prompt-Enhancement aus
+- Profil `krea2-turbo`: Prompt-Enhancement aus
+- Profil `krea2-turbo-enhanced`: lokales Prompt-Enhancement ueber den eingebauten `TextGenerate`-Node
 - optionale `krea2_darkbrush`-LoRA aus
 
 Die Dateien muessen bereits in den passenden `ComfyUI/models/...`-Ordnern liegen. Falls die feste Ink-Wash-LoRA nicht verwendet werden soll, muss Node `51` aus dem API-Workflow entfernt und der `model`-Eingang von Node `3` auf `["10", 0]` gesetzt werden.
@@ -61,6 +62,8 @@ In Discord stehen dann zur Verfuegung:
 /status
 /bild prompt:... seitenverhaeltnis:3:4 Portraet Standard (888x1184) seed:-1 bilder:1
 ```
+
+Fuer Prompt-Enhancement im Parameter `workflow` das Profil `krea2-turbo-enhanced` auswaehlen. Es nutzt den bereits geladenen Qwen/Krea-Textencoder lokal und benoetigt keinen externen API-Key. Ohne Auswahl bleibt `krea2-turbo` der Standard.
 
 `seitenverhaeltnis` bietet dieselben acht 1-Megapixel-Formate wie ComfyUIs `ResolutionSelector`: `1:1`, `2:3`, `3:2`, `3:4`, `4:3`, `9:16`, `16:9` und `21:9`. Das ausgewaehlte Format ueberschreibt `breite` und `hoehe`. Ohne Auswahl koennen eigene Werte in 8er-Schritten angegeben werden; `breite:888 hoehe:1184` ist daher ebenfalls gueltig.
 
