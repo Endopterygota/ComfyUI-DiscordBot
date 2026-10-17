@@ -3,16 +3,10 @@
     "inputs": {
       "video": ["130", 0],
       "filename_prefix": "Discord/MiniMaxH3",
-      "format": {
-        "format": "mp4",
-        "codec": {
-          "codec": "h264",
-          "encoding": {
-            "encoding": "re-encode",
-            "crf": 23
-          }
-        }
-      }
+      "format": "mp4",
+      "format.codec": "h264",
+      "format.codec.encoding": "re-encode",
+      "format.codec.encoding.crf": 23
     },
     "class_type": "SaveVideo",
     "_meta": {"title": "Save MiniMax H3 Video"}

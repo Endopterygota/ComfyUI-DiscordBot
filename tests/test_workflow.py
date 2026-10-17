@@ -241,6 +241,19 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(VideoWorkflowRenderer.duration_to_frames(10), 243)
         self.assertEqual(VideoWorkflowRenderer.duration_to_frames(15), 362)
 
+    def test_minimax_save_video_uses_flat_dynamic_combo_inputs(self) -> None:
+        workflow_path = (
+            Path(__file__).resolve().parents[1]
+            / "workflows"
+            / "minimax_h3_t2v_api.json"
+        )
+        graph = load_api_workflow(workflow_path)
+        save_inputs = graph["92"]["inputs"]
+        self.assertEqual(save_inputs["format"], "mp4")
+        self.assertEqual(save_inputs["format.codec"], "h264")
+        self.assertEqual(save_inputs["format.codec.encoding"], "re-encode")
+        self.assertEqual(save_inputs["format.codec.encoding.crf"], 23)
+
 
 if __name__ == "__main__":
     unittest.main()
