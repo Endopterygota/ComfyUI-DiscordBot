@@ -76,8 +76,8 @@ class WorkflowRenderer:
     ) -> RenderedWorkflow:
         if not prompt.strip():
             raise WorkflowError("Der Prompt darf nicht leer sein.")
-        if width % 64 or height % 64:
-            raise WorkflowError("Breite und Hoehe muessen durch 64 teilbar sein.")
+        if width % 8 or height % 8:
+            raise WorkflowError("Breite und Hoehe muessen durch 8 teilbar sein.")
         if not 1 <= batch_size <= 4:
             raise WorkflowError("Es sind 1 bis 4 Bilder pro Auftrag erlaubt.")
 

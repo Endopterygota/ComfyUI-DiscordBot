@@ -12,6 +12,7 @@ from discord import app_commands
 
 from .comfy import ComfyClient, ComfyError
 from .config import Settings
+from .resolutions import RESOLUTION_PRESETS, RESOLUTION_PRESETS_BY_VALUE
 from .workflow import WorkflowError, WorkflowRenderer
 
 
@@ -95,18 +96,26 @@ class ComfyDiscordBot(discord.Client):
         @app_commands.describe(
             prompt="Was soll erzeugt werden?",
             negative="Optionaler negativer Prompt; leer behaelt den Workflow-Standard",
-            breite="Bildbreite, durch 64 teilbar",
-            hoehe="Bildhoehe, durch 64 teilbar",
+            seitenverhaeltnis="Standardformat; ueberschreibt Breite und Hoehe",
+            breite="Eigene Bildbreite, durch 8 teilbar",
+            hoehe="Eigene Bildhoehe, durch 8 teilbar",
             seed="-1 fuer zufaelligen Seed",
             bilder="Anzahl der Bilder (1 bis 4)",
             lora="Installierte LoRA; leer behaelt den Workflow-Standard",
             lora_staerke="LoRA-Staerke; leer behaelt den Workflow-Standard",
             workflow="Workflow-Profil; leer nutzt den Standard",
         )
+        @app_commands.choices(
+            seitenverhaeltnis=[
+                app_commands.Choice(name=preset.discord_name, value=preset.value)
+                for preset in RESOLUTION_PRESETS
+            ]
+        )
         async def image_command(
             interaction: discord.Interaction,
             prompt: app_commands.Range[str, 1, 4000],
             negative: app_commands.Range[str, 0, 4000] | None = None,
+            seitenverhaeltnis: str | None = None,
             breite: app_commands.Range[int, 256, 2048] = 1024,
             hoehe: app_commands.Range[int, 256, 2048] = 1024,
             seed: app_commands.Range[int, -1, 9007199254740991] = -1,
@@ -130,6 +139,16 @@ class ComfyDiscordBot(discord.Client):
                     f"Unbekannter Workflow. Verfuegbar: {available}", ephemeral=True
                 )
                 return
+
+            final_width, final_height = breite, hoehe
+            if seitenverhaeltnis is not None:
+                preset = RESOLUTION_PRESETS_BY_VALUE.get(seitenverhaeltnis)
+                if preset is None:
+                    await interaction.response.send_message(
+                        "Dieses Standardformat ist nicht bekannt.", ephemeral=True
+                    )
+                    return
+                final_width, final_height = preset.width, preset.height
 
             selected_lora: str | None = None
             selected_strength = lora_staerke
@@ -159,8 +178,8 @@ class ComfyDiscordBot(discord.Client):
                 rendered = renderer.render(
                     prompt=prompt,
                     negative_prompt=negative,
-                    width=breite,
-                    height=hoehe,
+                    width=final_width,
+                    height=final_height,
                     batch_size=bilder,
                     seed=seed,
                     lora_name=selected_lora,
@@ -193,7 +212,7 @@ class ComfyDiscordBot(discord.Client):
                 suffix = f" ({omitted} weitere Ausgabe(n) nicht angehaengt)" if omitted else ""
                 await interaction.edit_original_response(
                     content=(
-                        f"Fertig · Seed `{rendered.seed}` · {breite}×{hoehe} · "
+                        f"Fertig · Seed `{rendered.seed}` · {final_width}×{final_height} · "
                         f"Workflow `{profile_name}` · LoRA `{lora_label}`{suffix}"
                     ),
                     attachments=discord_files,

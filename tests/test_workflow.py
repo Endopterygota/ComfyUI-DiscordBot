@@ -68,7 +68,7 @@ class WorkflowTests(unittest.TestCase):
             with self.assertRaisesRegex(WorkflowError, r"Export \(API\)"):
                 load_api_workflow(path)
 
-    def test_dimensions_must_be_divisible_by_64(self) -> None:
+    def test_comfy_resolution_selector_dimensions_are_accepted(self) -> None:
         graph = {
             "1": {"class_type": "Text", "inputs": {"text": "old"}},
             "2": {"class_type": "Sampler", "inputs": {"seed": 1}},
@@ -85,11 +85,42 @@ class WorkflowTests(unittest.TestCase):
             path = Path(directory) / "workflow.json"
             path.write_text(json.dumps(graph), encoding="utf-8")
             renderer = WorkflowRenderer(self._profile(path))
-            with self.assertRaisesRegex(WorkflowError, "durch 64"):
+            result = renderer.render(
+                prompt="x",
+                negative_prompt=None,
+                width=888,
+                height=1184,
+                batch_size=1,
+                seed=1,
+                lora_name=None,
+                lora_strength=None,
+                filename_prefix="x",
+            )
+            self.assertEqual(result.graph["3"]["inputs"]["width"], 888)
+            self.assertEqual(result.graph["3"]["inputs"]["height"], 1184)
+
+    def test_dimensions_must_be_divisible_by_8(self) -> None:
+        graph = {
+            "1": {"class_type": "Text", "inputs": {"text": "old"}},
+            "2": {"class_type": "Sampler", "inputs": {"seed": 1}},
+            "3": {
+                "class_type": "Latent",
+                "inputs": {"width": 512, "height": 512, "batch_size": 1},
+            },
+            "4": {
+                "class_type": "LoraLoaderModelOnly",
+                "inputs": {"lora_name": "default.safetensors", "strength_model": 0.8},
+            },
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "workflow.json"
+            path.write_text(json.dumps(graph), encoding="utf-8")
+            renderer = WorkflowRenderer(self._profile(path))
+            with self.assertRaisesRegex(WorkflowError, "durch 8"):
                 renderer.render(
                     prompt="x",
                     negative_prompt=None,
-                    width=1000,
+                    width=1001,
                     height=1024,
                     batch_size=1,
                     seed=1,

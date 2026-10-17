@@ -59,8 +59,10 @@ In Discord stehen dann zur Verfuegung:
 
 ```text
 /status
-/bild prompt:... negative:... breite:1024 hoehe:1024 seed:-1 bilder:1
+/bild prompt:... seitenverhaeltnis:3:4 Portraet Standard (888x1184) seed:-1 bilder:1
 ```
+
+`seitenverhaeltnis` bietet dieselben acht 1-Megapixel-Formate wie ComfyUIs `ResolutionSelector`: `1:1`, `2:3`, `3:2`, `3:4`, `4:3`, `9:16`, `16:9` und `21:9`. Das ausgewaehlte Format ueberschreibt `breite` und `hoehe`. Ohne Auswahl koennen eigene Werte in 8er-Schritten angegeben werden; `breite:888 hoehe:1184` ist daher ebenfalls gueltig.
 
 Beim Parameter `lora` fragt der Bot automatisch `ComfyUI/models/loras` ab und zeigt die aktuell installierten Dateien als Discord-Autovervollstaendigung. `Keine LoRA` setzt die Staerke auf 0; ein leeres Feld oder `Workflow-Standard beibehalten` nutzt die im Workflow hinterlegte LoRA. Mit `lora_staerke` kann ein Wert von 0 bis 2 gewaehlt werden. Nach Aenderungen im LoRA-Ordner wird die Liste innerhalb von 30 Sekunden aktualisiert.
 
