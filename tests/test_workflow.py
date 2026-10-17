@@ -68,6 +68,65 @@ class WorkflowTests(unittest.TestCase):
             with self.assertRaisesRegex(WorkflowError, r"Export \(API\)"):
                 load_api_workflow(path)
 
+    def test_renderer_applies_three_lora_slots(self) -> None:
+        graph = {
+            "1": {"class_type": "Text", "inputs": {"text": "old"}},
+            "2": {"class_type": "Sampler", "inputs": {"seed": 1}},
+            "3": {
+                "class_type": "Latent",
+                "inputs": {"width": 512, "height": 512, "batch_size": 1},
+            },
+            "4": {
+                "class_type": "LoraLoaderModelOnly",
+                "inputs": {"lora_name": "one.safetensors", "strength_model": 1.0},
+            },
+            "5": {
+                "class_type": "LoraLoaderModelOnly",
+                "inputs": {"lora_name": "two.safetensors", "strength_model": 0.0},
+            },
+            "6": {
+                "class_type": "LoraLoaderModelOnly",
+                "inputs": {"lora_name": "three.safetensors", "strength_model": 0.0},
+            },
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "workflow.json"
+            path.write_text(json.dumps(graph), encoding="utf-8")
+            base_profile = self._profile(path)
+            profile = WorkflowProfile(
+                name=base_profile.name,
+                description=base_profile.description,
+                file=base_profile.file,
+                bindings={
+                    **base_profile.bindings,
+                    "lora_2_name": Binding("5", "lora_name"),
+                    "lora_2_strength": Binding("5", "strength_model"),
+                    "lora_3_name": Binding("6", "lora_name"),
+                    "lora_3_strength": Binding("6", "strength_model"),
+                },
+            )
+            renderer = WorkflowRenderer(profile)
+            result = renderer.render(
+                prompt="x",
+                negative_prompt=None,
+                width=1024,
+                height=1024,
+                batch_size=1,
+                seed=1,
+                lora_name="first.safetensors",
+                lora_strength=0.8,
+                lora_2_name="second.safetensors",
+                lora_2_strength=0.6,
+                lora_3_name="third.safetensors",
+                lora_3_strength=1.2,
+                filename_prefix="x",
+            )
+            self.assertEqual(result.graph["4"]["inputs"]["strength_model"], 0.8)
+            self.assertEqual(result.graph["5"]["inputs"]["lora_name"], "second.safetensors")
+            self.assertEqual(result.graph["5"]["inputs"]["strength_model"], 0.6)
+            self.assertEqual(result.graph["6"]["inputs"]["lora_name"], "third.safetensors")
+            self.assertEqual(result.graph["6"]["inputs"]["strength_model"], 1.2)
+
     def test_comfy_resolution_selector_dimensions_are_accepted(self) -> None:
         graph = {
             "1": {"class_type": "Text", "inputs": {"text": "old"}},

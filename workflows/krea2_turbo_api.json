@@ -2,7 +2,7 @@
   "3": {
     "class_type": "KSampler",
     "inputs": {
-      "model": ["51", 0],
+      "model": ["53", 0],
       "positive": ["6", 0],
       "negative": ["13", 0],
       "latent_image": ["5", 0],
@@ -77,6 +77,22 @@
       "model": ["10", 0],
       "lora_name": "Stylized_Ink_Wash_krea2_3296367_epoch_9.safetensors",
       "strength_model": 1.0
+    }
+  },
+  "52": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": ["51", 0],
+      "lora_name": "Stylized_Ink_Wash_krea2_3296367_epoch_9.safetensors",
+      "strength_model": 0.0
+    }
+  },
+  "53": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": ["52", 0],
+      "lora_name": "Stylized_Ink_Wash_krea2_3296367_epoch_9.safetensors",
+      "strength_model": 0.0
     }
   }
 }

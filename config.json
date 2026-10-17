@@ -15,6 +15,10 @@
         "seed": { "node": "3", "input": "seed" },
         "lora_name": { "node": "51", "input": "lora_name" },
         "lora_strength": { "node": "51", "input": "strength_model" },
+        "lora_2_name": { "node": "52", "input": "lora_name" },
+        "lora_2_strength": { "node": "52", "input": "strength_model" },
+        "lora_3_name": { "node": "53", "input": "lora_name" },
+        "lora_3_strength": { "node": "53", "input": "strength_model" },
         "filename_prefix": { "node": "29", "input": "filename_prefix" }
       }
     },
@@ -30,6 +34,10 @@
         "seed": { "node": "3", "input": "seed" },
         "lora_name": { "node": "51", "input": "lora_name" },
         "lora_strength": { "node": "51", "input": "strength_model" },
+        "lora_2_name": { "node": "52", "input": "lora_name" },
+        "lora_2_strength": { "node": "52", "input": "strength_model" },
+        "lora_3_name": { "node": "53", "input": "lora_name" },
+        "lora_3_strength": { "node": "53", "input": "strength_model" },
         "filename_prefix": { "node": "29", "input": "filename_prefix" }
       }
     }

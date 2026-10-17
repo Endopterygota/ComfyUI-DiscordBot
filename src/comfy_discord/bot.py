@@ -91,6 +91,60 @@ class ComfyDiscordBot(discord.Client):
         # Also accept an exact filename typed manually.
         return value if value in self._lora_cache else None
 
+    async def _prepare_lora_slot(
+        self,
+        value: str | None,
+        strength: float | None,
+        *,
+        slot_name: str,
+        allow_default_strength: bool,
+    ) -> tuple[str | None, float | None, str | None]:
+        if value == "__none__":
+            return None, 0.0, None
+        if value == "__default__" or value is None:
+            if strength is not None and not allow_default_strength:
+                raise WorkflowError(f"{slot_name}: Bitte zuerst eine LoRA auswaehlen.")
+            label = "Workflow-Standard" if allow_default_strength else None
+            if label is not None and strength is not None:
+                label = f"{label} ({strength:g})"
+            return None, strength, label
+
+        selected = await self._resolve_lora(value)
+        if selected is None:
+            raise WorkflowError(
+                f"{slot_name}: Diese LoRA ist in der laufenden ComfyUI-Installation nicht mehr vorhanden."
+            )
+        actual_strength = 1.0 if strength is None else strength
+        return selected, actual_strength, f"{selected} ({actual_strength:g})"
+
+    async def _lora_autocomplete_choices(
+        self,
+        current: str,
+        *,
+        primary: bool,
+    ) -> list[app_commands.Choice[str]]:
+        try:
+            loras = await self._list_loras()
+        except ComfyError:
+            return []
+        query = current.casefold()
+        special: list[app_commands.Choice[str]] = []
+        if not query:
+            if primary:
+                special.append(
+                    app_commands.Choice(name="Workflow-Standard beibehalten", value="__default__")
+                )
+            special.append(app_commands.Choice(name="Keine LoRA / Slot leer", value="__none__"))
+        matches = [filename for filename in loras if query in filename.casefold()]
+        choices = [
+            app_commands.Choice(
+                name=(filename if len(filename) <= 100 else f"{filename[:97]}..."),
+                value=self._lora_alias(filename),
+            )
+            for filename in matches[: 25 - len(special)]
+        ]
+        return special + choices
+
     def _register_commands(self) -> None:
         @self.tree.command(name="bild", description="Erzeugt Bilder mit ComfyUI")
         @app_commands.describe(
@@ -103,6 +157,10 @@ class ComfyDiscordBot(discord.Client):
             bilder="Anzahl der Bilder (1 bis 4)",
             lora="Installierte LoRA; leer behaelt den Workflow-Standard",
             lora_staerke="LoRA-Staerke; leer behaelt den Workflow-Standard",
+            lora_2="Zweite installierte LoRA (optional)",
+            lora_2_staerke="Staerke der zweiten LoRA; Standard ist 1",
+            lora_3="Dritte installierte LoRA (optional)",
+            lora_3_staerke="Staerke der dritten LoRA; Standard ist 1",
             workflow="Workflow-Profil; leer nutzt den Standard",
         )
         @app_commands.choices(
@@ -122,6 +180,10 @@ class ComfyDiscordBot(discord.Client):
             bilder: app_commands.Range[int, 1, 4] = 1,
             lora: str | None = None,
             lora_staerke: app_commands.Range[float, 0.0, 2.0] | None = None,
+            lora_2: str | None = None,
+            lora_2_staerke: app_commands.Range[float, 0.0, 2.0] | None = None,
+            lora_3: str | None = None,
+            lora_3_staerke: app_commands.Range[float, 0.0, 2.0] | None = None,
             workflow: str | None = None,
         ) -> None:
             if not self._channel_allowed(interaction):
@@ -150,29 +212,32 @@ class ComfyDiscordBot(discord.Client):
                     return
                 final_width, final_height = preset.width, preset.height
 
-            selected_lora: str | None = None
-            selected_strength = lora_staerke
-            lora_label = "Workflow-Standard"
-            if lora == "__none__":
-                selected_strength = 0.0
-                lora_label = "keine"
-            elif lora == "__default__" or lora is None:
-                pass
-            else:
-                try:
-                    selected_lora = await self._resolve_lora(lora)
-                except ComfyError as exc:
-                    await interaction.response.send_message(str(exc), ephemeral=True)
-                    return
-                if selected_lora is None:
-                    await interaction.response.send_message(
-                        "Diese LoRA ist in der laufenden ComfyUI-Installation nicht mehr vorhanden.",
-                        ephemeral=True,
-                    )
-                    return
-                if selected_strength is None:
-                    selected_strength = 1.0
-                lora_label = selected_lora
+            try:
+                selected_lora, selected_strength, lora_label = await self._prepare_lora_slot(
+                    lora,
+                    lora_staerke,
+                    slot_name="LoRA 1",
+                    allow_default_strength=True,
+                )
+                selected_lora_2, selected_strength_2, lora_label_2 = await self._prepare_lora_slot(
+                    lora_2,
+                    lora_2_staerke,
+                    slot_name="LoRA 2",
+                    allow_default_strength=False,
+                )
+                selected_lora_3, selected_strength_3, lora_label_3 = await self._prepare_lora_slot(
+                    lora_3,
+                    lora_3_staerke,
+                    slot_name="LoRA 3",
+                    allow_default_strength=False,
+                )
+            except (ComfyError, WorkflowError) as exc:
+                await interaction.response.send_message(str(exc), ephemeral=True)
+                return
+
+            lora_summary = ", ".join(
+                label for label in (lora_label, lora_label_2, lora_label_3) if label is not None
+            ) or "keine"
 
             try:
                 rendered = renderer.render(
@@ -184,6 +249,10 @@ class ComfyDiscordBot(discord.Client):
                     seed=seed,
                     lora_name=selected_lora,
                     lora_strength=selected_strength,
+                    lora_2_name=selected_lora_2,
+                    lora_2_strength=selected_strength_2,
+                    lora_3_name=selected_lora_3,
+                    lora_3_strength=selected_strength_3,
                     filename_prefix=f"Discord/{interaction.user.id}/krea2",
                 )
             except WorkflowError as exc:
@@ -213,7 +282,7 @@ class ComfyDiscordBot(discord.Client):
                 await interaction.edit_original_response(
                     content=(
                         f"Fertig · Seed `{rendered.seed}` · {final_width}×{final_height} · "
-                        f"Workflow `{profile_name}` · LoRA `{lora_label}`{suffix}"
+                        f"Workflow `{profile_name}` · LoRAs `{lora_summary}`{suffix}"
                     ),
                     attachments=discord_files,
                 )
@@ -249,24 +318,23 @@ class ComfyDiscordBot(discord.Client):
             current: str,
         ) -> list[app_commands.Choice[str]]:
             del interaction
-            try:
-                loras = await self._list_loras()
-            except ComfyError:
-                return []
-            query = current.casefold()
-            special = [
-                app_commands.Choice(name="Workflow-Standard beibehalten", value="__default__"),
-                app_commands.Choice(name="Keine LoRA", value="__none__"),
-            ]
-            matches = [filename for filename in loras if query in filename.casefold()]
-            choices = [
-                app_commands.Choice(
-                    name=(filename if len(filename) <= 100 else f"{filename[:97]}..."),
-                    value=self._lora_alias(filename),
-                )
-                for filename in matches[: 25 - len(special)]
-            ]
-            return special + choices
+            return await self._lora_autocomplete_choices(current, primary=True)
+
+        @image_command.autocomplete("lora_2")
+        async def lora_2_autocomplete(
+            interaction: discord.Interaction,
+            current: str,
+        ) -> list[app_commands.Choice[str]]:
+            del interaction
+            return await self._lora_autocomplete_choices(current, primary=False)
+
+        @image_command.autocomplete("lora_3")
+        async def lora_3_autocomplete(
+            interaction: discord.Interaction,
+            current: str,
+        ) -> list[app_commands.Choice[str]]:
+            del interaction
+            return await self._lora_autocomplete_choices(current, primary=False)
 
         @self.tree.command(name="status", description="Prueft Bot, Warteschlange und ComfyUI")
         async def status_command(interaction: discord.Interaction) -> None:

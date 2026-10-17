@@ -69,6 +69,8 @@ Fuer Prompt-Enhancement im Parameter `workflow` das Profil `krea2-turbo-enhanced
 
 Beim Parameter `lora` fragt der Bot automatisch `ComfyUI/models/loras` ab und zeigt die aktuell installierten Dateien als Discord-Autovervollstaendigung. `Keine LoRA` setzt die Staerke auf 0; ein leeres Feld oder `Workflow-Standard beibehalten` nutzt die im Workflow hinterlegte LoRA. Mit `lora_staerke` kann ein Wert von 0 bis 2 gewaehlt werden. Nach Aenderungen im LoRA-Ordner wird die Liste innerhalb von 30 Sekunden aktualisiert.
 
+Bis zu drei LoRAs koennen in einem Auftrag verkettet werden. Dafuer `lora`/`lora_staerke`, `lora_2`/`lora_2_staerke` und `lora_3`/`lora_3_staerke` verwenden. Die zusaetzlichen Slots sind standardmaessig deaktiviert; bei ausgewaehlter Datei ist ihre Standardstaerke `1.0`. Benoetigte Trigger-Woerter weiterhin in den Prompt schreiben.
+
 ComfyUI darf nicht direkt ins Internet freigegeben werden. Der Discord-Bot baut selbst die ausgehende Verbindung zu Discord auf.
 
 ## Konfiguration

@@ -73,6 +73,10 @@ class WorkflowRenderer:
         lora_name: str | None,
         lora_strength: float | None,
         filename_prefix: str,
+        lora_2_name: str | None = None,
+        lora_2_strength: float | None = None,
+        lora_3_name: str | None = None,
+        lora_3_strength: float | None = None,
     ) -> RenderedWorkflow:
         if not prompt.strip():
             raise WorkflowError("Der Prompt darf nicht leer sein.")
@@ -96,6 +100,14 @@ class WorkflowRenderer:
             values["lora_name"] = lora_name
         if lora_strength is not None:
             values["lora_strength"] = lora_strength
+        if lora_2_name is not None:
+            values["lora_2_name"] = lora_2_name
+        if lora_2_strength is not None:
+            values["lora_2_strength"] = lora_2_strength
+        if lora_3_name is not None:
+            values["lora_3_name"] = lora_3_name
+        if lora_3_strength is not None:
+            values["lora_3_strength"] = lora_3_strength
 
         graph = copy.deepcopy(self._template)
         for parameter, value in values.items():
