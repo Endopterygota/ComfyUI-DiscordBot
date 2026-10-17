@@ -36,9 +36,11 @@ class Settings:
     generation_timeout_seconds: int
     log_level: str
     default_workflow: str
+    default_video_workflow: str | None
     max_prompt_length: int
     max_files_per_message: int
     workflows: dict[str, WorkflowProfile]
+    video_workflows: dict[str, WorkflowProfile]
 
 
 def _load_dotenv(path: Path) -> None:
@@ -85,6 +87,38 @@ def _id_set(value: str | None, label: str) -> frozenset[int]:
         raise ConfigError(f"{label} enthaelt eine ungueltige Discord-ID.") from exc
 
 
+def _load_workflow_profiles(
+    raw_profiles: Any,
+    *,
+    config_path: Path,
+    section_name: str,
+) -> dict[str, WorkflowProfile]:
+    if raw_profiles is None:
+        return {}
+    if not isinstance(raw_profiles, dict):
+        raise ConfigError(f"{section_name} muss ein Objekt sein.")
+
+    profiles: dict[str, WorkflowProfile] = {}
+    for name, entry in raw_profiles.items():
+        if not isinstance(entry, dict):
+            raise ConfigError(f"Workflow {name!r} muss ein Objekt sein.")
+        workflow_file = Path(str(entry.get("file", "")))
+        if not workflow_file.is_absolute():
+            workflow_file = config_path.parent / workflow_file
+        bindings: dict[str, Binding] = {}
+        for parameter, binding in entry.get("bindings", {}).items():
+            if not isinstance(binding, dict) or "node" not in binding or "input" not in binding:
+                raise ConfigError(f"Ungueltiges Binding {parameter!r} in Workflow {name!r}.")
+            bindings[parameter] = Binding(str(binding["node"]), str(binding["input"]))
+        profiles[name] = WorkflowProfile(
+            name=name,
+            description=str(entry.get("description", name)),
+            file=workflow_file.resolve(),
+            bindings=bindings,
+        )
+    return profiles
+
+
 def load_settings(
     project_dir: Path | None = None,
     *,
@@ -104,30 +138,31 @@ def load_settings(
     except (OSError, json.JSONDecodeError) as exc:
         raise ConfigError(f"Konfiguration kann nicht gelesen werden: {exc}") from exc
 
-    profiles: dict[str, WorkflowProfile] = {}
-    for name, entry in raw.get("workflows", {}).items():
-        if not isinstance(entry, dict):
-            raise ConfigError(f"Workflow {name!r} muss ein Objekt sein.")
-        workflow_file = Path(str(entry.get("file", "")))
-        if not workflow_file.is_absolute():
-            workflow_file = config_path.parent / workflow_file
-        bindings: dict[str, Binding] = {}
-        for parameter, binding in entry.get("bindings", {}).items():
-            if not isinstance(binding, dict) or "node" not in binding or "input" not in binding:
-                raise ConfigError(f"Ungueltiges Binding {parameter!r} in Workflow {name!r}.")
-            bindings[parameter] = Binding(str(binding["node"]), str(binding["input"]))
-        profiles[name] = WorkflowProfile(
-            name=name,
-            description=str(entry.get("description", name)),
-            file=workflow_file.resolve(),
-            bindings=bindings,
-        )
+    profiles = _load_workflow_profiles(
+        raw.get("workflows", {}),
+        config_path=config_path,
+        section_name="workflows",
+    )
+    video_profiles = _load_workflow_profiles(
+        raw.get("video_workflows", {}),
+        config_path=config_path,
+        section_name="video_workflows",
+    )
 
     if not profiles:
         raise ConfigError("Mindestens ein Workflow muss in config.json konfiguriert sein.")
     default_workflow = str(raw.get("default_workflow", ""))
     if default_workflow not in profiles:
         raise ConfigError("default_workflow verweist nicht auf einen konfigurierten Workflow.")
+
+    default_video_workflow_value = str(raw.get("default_video_workflow", ""))
+    default_video_workflow: str | None = default_video_workflow_value or None
+    if video_profiles and default_video_workflow not in video_profiles:
+        raise ConfigError(
+            "default_video_workflow verweist nicht auf einen konfigurierten Video-Workflow."
+        )
+    if not video_profiles and default_video_workflow is not None:
+        raise ConfigError("default_video_workflow ist gesetzt, aber video_workflows ist leer.")
 
     token = os.environ.get("DISCORD_TOKEN", "").strip() or None
     if require_token and not token:
@@ -150,8 +185,10 @@ def load_settings(
         ),
         log_level=os.environ.get("LOG_LEVEL", "INFO").upper(),
         default_workflow=default_workflow,
+        default_video_workflow=default_video_workflow,
         max_prompt_length=int(raw.get("max_prompt_length", 4000)),
         max_files_per_message=min(10, max(1, int(raw.get("max_files_per_message", 10)))),
         workflows=profiles,
+        video_workflows=video_profiles,
     )
 

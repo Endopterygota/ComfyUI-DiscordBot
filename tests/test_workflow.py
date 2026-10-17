@@ -6,7 +6,12 @@ import unittest
 from pathlib import Path
 
 from comfy_discord.config import Binding, WorkflowProfile
-from comfy_discord.workflow import WorkflowError, WorkflowRenderer, load_api_workflow
+from comfy_discord.workflow import (
+    VideoWorkflowRenderer,
+    WorkflowError,
+    WorkflowRenderer,
+    load_api_workflow,
+)
 
 
 class WorkflowTests(unittest.TestCase):
@@ -187,6 +192,54 @@ class WorkflowTests(unittest.TestCase):
                     lora_strength=None,
                     filename_prefix="x",
                 )
+
+    def test_video_renderer_binds_prompt_dimensions_duration_and_seed(self) -> None:
+        graph = {
+            "1": {
+                "class_type": "MiniMaxH3ImageToVideo",
+                "inputs": {"prompt": "old", "width": 1344, "height": 768, "length": 124},
+            },
+            "2": {"class_type": "RandomNoise", "inputs": {"noise_seed": 1}},
+            "3": {"class_type": "SaveVideo", "inputs": {"filename_prefix": "old"}},
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "video.json"
+            path.write_text(json.dumps(graph), encoding="utf-8")
+            profile = WorkflowProfile(
+                name="video",
+                description="video",
+                file=path,
+                bindings={
+                    "prompt": Binding("1", "prompt"),
+                    "width": Binding("1", "width"),
+                    "height": Binding("1", "height"),
+                    "length": Binding("1", "length"),
+                    "seed": Binding("2", "noise_seed"),
+                    "filename_prefix": Binding("3", "filename_prefix"),
+                },
+            )
+            renderer = VideoWorkflowRenderer(profile)
+            result = renderer.render_video(
+                prompt="a moving scene",
+                width=768,
+                height=1344,
+                duration_seconds=5,
+                seed=42,
+                filename_prefix="Discord/video",
+            )
+            self.assertEqual(result.seed, 42)
+            self.assertEqual(result.frame_count, 124)
+            self.assertEqual(result.graph["1"]["inputs"]["prompt"], "a moving scene")
+            self.assertEqual(result.graph["1"]["inputs"]["width"], 768)
+            self.assertEqual(result.graph["1"]["inputs"]["height"], 1344)
+            self.assertEqual(result.graph["1"]["inputs"]["length"], 124)
+            self.assertEqual(result.graph["2"]["inputs"]["noise_seed"], 42)
+            self.assertEqual(result.graph["3"]["inputs"]["filename_prefix"], "Discord/video")
+
+    def test_video_duration_is_aligned_to_minimax_frame_grid(self) -> None:
+        self.assertEqual(VideoWorkflowRenderer.duration_to_frames(5), 124)
+        self.assertEqual(VideoWorkflowRenderer.duration_to_frames(10), 243)
+        self.assertEqual(VideoWorkflowRenderer.duration_to_frames(15), 362)
 
 
 if __name__ == "__main__":

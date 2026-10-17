@@ -5,7 +5,7 @@ import logging
 import sys
 
 from comfy_discord.config import ConfigError, load_settings
-from comfy_discord.workflow import WorkflowError, validate_profiles
+from comfy_discord.workflow import WorkflowError, validate_profiles, validate_video_profiles
 
 
 def main() -> None:
@@ -16,6 +16,7 @@ def main() -> None:
     try:
         settings = load_settings(require_token=not args.check)
         validate_profiles(settings.workflows)
+        validate_video_profiles(settings.video_workflows)
     except (ConfigError, WorkflowError) as exc:
         print(f"Konfigurationsfehler: {exc}", file=sys.stderr)
         raise SystemExit(2) from exc
@@ -31,6 +32,8 @@ def main() -> None:
         print(f"ComfyUI: {settings.comfy_url}")
         print(f"Discord-Token: {token_status}")
         print(f"Workflows: {', '.join(settings.workflows)}")
+        if settings.video_workflows:
+            print(f"Video-Workflows: {', '.join(settings.video_workflows)}")
         return
 
     from comfy_discord.bot import run_bot

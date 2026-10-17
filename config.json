@@ -1,5 +1,6 @@
 {
   "default_workflow": "krea2-turbo",
+  "default_video_workflow": "minimax-h3-t2v",
   "max_prompt_length": 4000,
   "max_files_per_message": 10,
   "workflows": {
@@ -39,6 +40,20 @@
         "lora_3_name": { "node": "53", "input": "lora_name" },
         "lora_3_strength": { "node": "53", "input": "strength_model" },
         "filename_prefix": { "node": "29", "input": "filename_prefix" }
+      }
+    }
+  },
+  "video_workflows": {
+    "minimax-h3-t2v": {
+      "description": "MiniMax H3 Text-to-Video mit Stereo-Audio und 4-Step Turbo",
+      "file": "workflows/minimax_h3_t2v_api.json",
+      "bindings": {
+        "prompt": { "node": "131", "input": "prompt" },
+        "width": { "node": "131", "input": "width" },
+        "height": { "node": "131", "input": "height" },
+        "length": { "node": "131", "input": "length" },
+        "seed": { "node": "129", "input": "noise_seed" },
+        "filename_prefix": { "node": "92", "input": "filename_prefix" }
       }
     }
   }

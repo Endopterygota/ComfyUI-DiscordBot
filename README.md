@@ -1,6 +1,6 @@
 # ComfyUI Discord Bot
 
-Ein lokaler Discord-Bot, der Slash-Commands in ComfyUI-API-Workflows uebersetzt und die erzeugten Bilder wieder in Discord hochlaedt.
+Ein lokaler Discord-Bot, der Slash-Commands in ComfyUI-API-Workflows uebersetzt und erzeugte Bilder oder Videos wieder in Discord hochlaedt.
 
 Der Bot ist GPU-unabhaengig: AMD/CUDA/DirectML/ROCm betrifft nur die vorhandene ComfyUI-Installation. ComfyUI sollte separat und lokal unter `127.0.0.1:8188` laufen.
 
@@ -18,6 +18,18 @@ Der Bot ist GPU-unabhaengig: AMD/CUDA/DirectML/ROCm betrifft nur die vorhandene 
 - optionale `krea2_darkbrush`-LoRA aus
 
 Die Dateien muessen bereits in den passenden `ComfyUI/models/...`-Ordnern liegen. Falls die feste Ink-Wash-LoRA nicht verwendet werden soll, muss Node `51` aus dem API-Workflow entfernt und der `model`-Eingang von Node `3` auf `["10", 0]` gesetzt werden.
+
+## Enthaltener MiniMax-H3-Video-Workflow
+
+`workflows/minimax_h3_t2v_api.json` erzeugt aus einem Textprompt ein MP4-Video mit nativ generiertem Stereo-Audio. Das Profil `minimax-h3-t2v` ist auf die bereits vorhandenen Modelle abgestimmt:
+
+- `minimax_h3_fl2va_pruned_int8_convrot.safetensors`
+- `qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors`
+- `minimax_h3_video_vae_fp16.safetensors`
+- `minimax_h3_audio_vae_fp32.safetensors`
+- `minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors`
+
+Der Workflow verwendet vier Schritte, `res_multistep`, den Simple Scheduler und H.264/MP4. INT8 plus Turbo-LoRA ist fuer die vorhandene AMD/ZLUDA-Installation wesentlich praktikabler als der volle Basis-Workflow. ComfyUI selbst muss aktuell genug sein, damit die nativen Nodes `MiniMaxH3ImageToVideo`, `VAEDecodeAudio`, `CreateVideo` und `SaveVideo` vorhanden sind.
 
 ## 1. Discord-App anlegen
 
@@ -61,6 +73,7 @@ In Discord stehen dann zur Verfuegung:
 ```text
 /status
 /bild prompt:... seitenverhaeltnis:3:4 Portraet Standard (888x1184) seed:-1 bilder:1
+/video prompt:Eine Drohnenfahrt ueber eine neblige Bergstadt seitenverhaeltnis:16:9 dauer:5 seed:-1
 ```
 
 Fuer Prompt-Enhancement im Parameter `workflow` das Profil `krea2-turbo-enhanced` auswaehlen. Es nutzt den bereits geladenen Qwen/Krea-Textencoder lokal und benoetigt keinen externen API-Key. Ohne Auswahl bleibt `krea2-turbo` der Standard.
@@ -71,11 +84,13 @@ Beim Parameter `lora` fragt der Bot automatisch `ComfyUI/models/loras` ab und ze
 
 Bis zu drei LoRAs koennen in einem Auftrag verkettet werden. Dafuer `lora`/`lora_staerke`, `lora_2`/`lora_2_staerke` und `lora_3`/`lora_3_staerke` verwenden. Die zusaetzlichen Slots sind standardmaessig deaktiviert; bei ausgewaehlter Datei ist ihre Standardstaerke `1.0`. Benoetigte Trigger-Woerter weiterhin in den Prompt schreiben.
 
+`/video` verwendet MiniMax H3 mit nativem Stereo-Audio. Zur Auswahl stehen H3-gerechte Formate von `1:1` bis `21:9`; Standard ist `1344x768` (`16:9`). Die Dauer kann zwischen 5 und 15 Sekunden liegen. MiniMax richtet sie intern auf sein erforderliches Raster `17k+5` bei 24 fps aus, daher werden beispielsweise aus 5 Sekunden 124 Frames beziehungsweise etwa 5,17 Sekunden. Videoauftraege koennen auf AMD/ZLUDA laenger dauern; `GENERATION_TIMEOUT_SECONDS=3600` ist deshalb empfohlen. Ist eine MP4 groesser als das Upload-Limit des Discord-Servers, nennt der Bot stattdessen ihren Ordner unter `ComfyUI/output/Discord/...`.
+
 ComfyUI darf nicht direkt ins Internet freigegeben werden. Der Discord-Bot baut selbst die ausgehende Verbindung zu Discord auf.
 
 ## Konfiguration
 
-`config.json` ordnet die Discord-Parameter konkreten Node-Inputs zu. Weitere API-Workflows koennen unter `workflows/` abgelegt und dort als zusaetzliche Profile eingetragen werden.
+`config.json` ordnet die Discord-Parameter konkreten Node-Inputs zu. Bildprofile liegen unter `workflows`, Videoprofile separat unter `video_workflows`. Weitere API-Workflows koennen unter `workflows/` abgelegt und dort als zusaetzliche Profile eingetragen werden.
 
 Die Umgebungsvariablen in `.env.example` steuern Server, Kanal-Freigaben, Timeout und Parallelitaet. Fuer eine einzelne GPU ist `MAX_PARALLEL_JOBS=1` empfohlen; ComfyUI verwaltet dahinter seine eigene Queue.
 

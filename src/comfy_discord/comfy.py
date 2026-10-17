@@ -111,7 +111,7 @@ class ComfyClient:
 
         files = await self._download_outputs(history)
         if not files:
-            raise ComfyError("Der Workflow wurde beendet, hat aber keine Bildausgabe geliefert.")
+            raise ComfyError("Der Workflow wurde beendet, hat aber keine Datei-Ausgabe geliefert.")
         return files
 
     async def _wait_for_completion(

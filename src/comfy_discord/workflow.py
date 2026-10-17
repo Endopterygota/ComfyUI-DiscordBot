@@ -20,6 +20,13 @@ class RenderedWorkflow:
     seed: int
 
 
+@dataclass(frozen=True)
+class RenderedVideoWorkflow:
+    graph: dict[str, Any]
+    seed: int
+    frame_count: int
+
+
 def load_api_workflow(path: Path) -> dict[str, Any]:
     if not path.is_file():
         raise WorkflowError(f"Workflow-Datei fehlt: {path}")
@@ -60,6 +67,14 @@ class WorkflowRenderer:
                 raise WorkflowError(
                     f"Binding {parameter!r}: Input {binding.input!r} fehlt an Node {binding.node!r}."
                 )
+
+    def _bind_values(self, values: dict[str, Any]) -> dict[str, Any]:
+        graph = copy.deepcopy(self._template)
+        for parameter, value in values.items():
+            binding = self.profile.bindings.get(parameter)
+            if binding is not None:
+                graph[binding.node]["inputs"][binding.input] = value
+        return graph
 
     def render(
         self,
@@ -109,15 +124,58 @@ class WorkflowRenderer:
         if lora_3_strength is not None:
             values["lora_3_strength"] = lora_3_strength
 
-        graph = copy.deepcopy(self._template)
-        for parameter, value in values.items():
-            binding = self.profile.bindings.get(parameter)
-            if binding is not None:
-                graph[binding.node]["inputs"][binding.input] = value
+        graph = self._bind_values(values)
         return RenderedWorkflow(graph=graph, seed=actual_seed)
+
+
+class VideoWorkflowRenderer(WorkflowRenderer):
+    @staticmethod
+    def duration_to_frames(duration_seconds: int) -> int:
+        frame_count = max(5, round(duration_seconds * 24))
+        return frame_count + (5 - frame_count % 17) % 17
+
+    def render_video(
+        self,
+        *,
+        prompt: str,
+        width: int,
+        height: int,
+        duration_seconds: int,
+        seed: int,
+        filename_prefix: str,
+    ) -> RenderedVideoWorkflow:
+        if not prompt.strip():
+            raise WorkflowError("Der Prompt darf nicht leer sein.")
+        if width % 32 or height % 32:
+            raise WorkflowError("Video-Breite und -Hoehe muessen durch 32 teilbar sein.")
+        if not 5 <= duration_seconds <= 15:
+            raise WorkflowError("Die Videodauer muss zwischen 5 und 15 Sekunden liegen.")
+
+        actual_seed = secrets.randbelow(2**53) if seed < 0 else seed
+        frame_count = self.duration_to_frames(duration_seconds)
+        graph = self._bind_values(
+            {
+                "prompt": prompt.strip(),
+                "width": width,
+                "height": height,
+                "length": frame_count,
+                "seed": actual_seed,
+                "filename_prefix": filename_prefix,
+            }
+        )
+        return RenderedVideoWorkflow(
+            graph=graph,
+            seed=actual_seed,
+            frame_count=frame_count,
+        )
 
 
 def validate_profiles(profiles: dict[str, WorkflowProfile]) -> None:
     for profile in profiles.values():
         WorkflowRenderer(profile)
+
+
+def validate_video_profiles(profiles: dict[str, WorkflowProfile]) -> None:
+    for profile in profiles.values():
+        VideoWorkflowRenderer(profile)
 

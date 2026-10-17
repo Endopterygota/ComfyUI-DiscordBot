@@ -12,8 +12,13 @@ from discord import app_commands
 
 from .comfy import ComfyClient, ComfyError
 from .config import Settings
-from .resolutions import RESOLUTION_PRESETS, RESOLUTION_PRESETS_BY_VALUE
-from .workflow import WorkflowError, WorkflowRenderer
+from .resolutions import (
+    RESOLUTION_PRESETS,
+    RESOLUTION_PRESETS_BY_VALUE,
+    VIDEO_RESOLUTION_PRESETS,
+    VIDEO_RESOLUTION_PRESETS_BY_VALUE,
+)
+from .workflow import VideoWorkflowRenderer, WorkflowError, WorkflowRenderer
 
 
 LOGGER = logging.getLogger(__name__)
@@ -26,6 +31,10 @@ class ComfyDiscordBot(discord.Client):
         self.tree = app_commands.CommandTree(self)
         self.comfy = ComfyClient(settings.comfy_url, settings.generation_timeout_seconds)
         self.renderers = {name: WorkflowRenderer(profile) for name, profile in settings.workflows.items()}
+        self.video_renderers = {
+            name: VideoWorkflowRenderer(profile)
+            for name, profile in settings.video_workflows.items()
+        }
         self.gpu_slots = asyncio.Semaphore(settings.max_parallel_jobs)
         self._queue_lock = asyncio.Lock()
         self._waiting = 0
@@ -335,6 +344,149 @@ class ComfyDiscordBot(discord.Client):
         ) -> list[app_commands.Choice[str]]:
             del interaction
             return await self._lora_autocomplete_choices(current, primary=False)
+
+        if self.video_renderers:
+            @self.tree.command(name="video", description="Erzeugt ein Video mit MiniMax H3 und ComfyUI")
+            @app_commands.describe(
+                prompt="Was soll im Video geschehen?",
+                seitenverhaeltnis="MiniMax-H3-Videoformat",
+                dauer="Gewuenschte Dauer in Sekunden (5 bis 15)",
+                seed="-1 fuer einen zufaelligen Seed",
+                workflow="Video-Workflow-Profil; leer nutzt den Standard",
+            )
+            @app_commands.choices(
+                seitenverhaeltnis=[
+                    app_commands.Choice(name=preset.discord_name, value=preset.value)
+                    for preset in VIDEO_RESOLUTION_PRESETS
+                ]
+            )
+            async def video_command(
+                interaction: discord.Interaction,
+                prompt: app_commands.Range[str, 1, 4000],
+                seitenverhaeltnis: str = "16:9",
+                dauer: app_commands.Range[int, 5, 15] = 5,
+                seed: app_commands.Range[int, -1, 9007199254740991] = -1,
+                workflow: str | None = None,
+            ) -> None:
+                if not self._channel_allowed(interaction):
+                    await interaction.response.send_message(
+                        "Dieser Kanal ist fuer den Bot nicht freigegeben.",
+                        ephemeral=True,
+                    )
+                    return
+                if len(prompt) > self.settings.max_prompt_length:
+                    await interaction.response.send_message("Der Prompt ist zu lang.", ephemeral=True)
+                    return
+
+                profile_name = workflow or self.settings.default_video_workflow
+                renderer = self.video_renderers.get(profile_name or "")
+                if renderer is None:
+                    available = ", ".join(self.video_renderers)
+                    await interaction.response.send_message(
+                        f"Unbekannter Video-Workflow. Verfuegbar: {available}",
+                        ephemeral=True,
+                    )
+                    return
+
+                preset = VIDEO_RESOLUTION_PRESETS_BY_VALUE.get(seitenverhaeltnis)
+                if preset is None:
+                    await interaction.response.send_message(
+                        "Dieses Videoformat ist nicht bekannt.",
+                        ephemeral=True,
+                    )
+                    return
+
+                try:
+                    rendered = renderer.render_video(
+                        prompt=prompt,
+                        width=preset.width,
+                        height=preset.height,
+                        duration_seconds=dauer,
+                        seed=seed,
+                        filename_prefix=f"Discord/{interaction.user.id}/minimax-h3",
+                    )
+                except WorkflowError as exc:
+                    await interaction.response.send_message(str(exc), ephemeral=True)
+                    return
+
+                await interaction.response.defer(thinking=True)
+                position = await self._queue_enter()
+                await interaction.edit_original_response(
+                    content=f"Videoauftrag angenommen (Warteschlangenposition: {position})."
+                )
+
+                acquired = False
+                try:
+                    await self.gpu_slots.acquire()
+                    acquired = True
+                    await self._queue_activate()
+                    await interaction.edit_original_response(
+                        content="ComfyUI erzeugt Video und Stereo-Audio …"
+                    )
+                    files = await self.comfy.generate(rendered.graph)
+                    selected = files[: self.settings.max_files_per_message]
+                    upload_limit = getattr(interaction.guild, "filesize_limit", 10 * 1024 * 1024)
+                    oversized = [item for item in selected if len(item.content) > upload_limit]
+                    actual_duration = rendered.frame_count / 24
+                    result_summary = (
+                        f"Fertig · Seed `{rendered.seed}` · {preset.width}×{preset.height} · "
+                        f"{rendered.frame_count} Frames / {actual_duration:.2f}s · "
+                        f"Workflow `{profile_name}`"
+                    )
+                    if oversized:
+                        names = ", ".join(item.filename for item in oversized)
+                        await interaction.edit_original_response(
+                            content=(
+                                f"{result_summary}\n"
+                                "Das Video ist groesser als das Upload-Limit dieses Discord-Servers. "
+                                f"Es liegt im ComfyUI-Output unter `Discord/{interaction.user.id}/minimax-h3` "
+                                f"({names})."
+                            )
+                        )
+                    else:
+                        discord_files = [
+                            discord.File(io.BytesIO(item.content), filename=item.filename)
+                            for item in selected
+                        ]
+                        omitted = len(files) - len(selected)
+                        suffix = f" ({omitted} weitere Ausgabe(n) nicht angehaengt)" if omitted else ""
+                        await interaction.edit_original_response(
+                            content=f"{result_summary}{suffix}",
+                            attachments=discord_files,
+                        )
+                except (ComfyError, WorkflowError) as exc:
+                    LOGGER.warning("Videogenerierung fehlgeschlagen: %s", exc)
+                    await interaction.edit_original_response(
+                        content=f"Videogenerierung fehlgeschlagen:\n```\n{str(exc)[:1700]}\n```"
+                    )
+                except Exception as exc:
+                    LOGGER.exception("Unerwarteter Fehler bei der Videogenerierung")
+                    await interaction.edit_original_response(
+                        content=(
+                            f"Unerwarteter Fehler: `{type(exc).__name__}`. "
+                            "Details stehen im Bot-Fenster."
+                        )
+                    )
+                finally:
+                    if acquired:
+                        await self._queue_leave()
+                        self.gpu_slots.release()
+
+            @video_command.autocomplete("workflow")
+            async def video_workflow_autocomplete(
+                interaction: discord.Interaction,
+                current: str,
+            ) -> list[app_commands.Choice[str]]:
+                del interaction
+                current = current.casefold()
+                return [
+                    app_commands.Choice(
+                        name=f"{name} – {profile.description}"[:100],
+                        value=name,
+                    )
+                    for name, profile in self.settings.video_workflows.items()
+                    if current in name.casefold() or current in profile.description.casefold()
+                ][:25]
 
         @self.tree.command(name="status", description="Prueft Bot, Warteschlange und ComfyUI")
         async def status_command(interaction: discord.Interaction) -> None:
