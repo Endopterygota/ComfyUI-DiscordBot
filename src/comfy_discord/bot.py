@@ -164,6 +164,8 @@ class ComfyDiscordBot(discord.Client):
             hoehe="Eigene Bildhoehe, durch 8 teilbar",
             seed="-1 fuer zufaelligen Seed",
             bilder="Anzahl der Bilder (1 bis 4)",
+            schritte="Sampling-Schritte; leer behaelt den Workflow-Standard",
+            cfg="CFG Scale; leer behaelt den Workflow-Standard",
             lora="Installierte LoRA; leer behaelt den Workflow-Standard",
             lora_staerke="LoRA-Staerke; leer behaelt den Workflow-Standard",
             lora_2="Zweite installierte LoRA (optional)",
@@ -187,6 +189,8 @@ class ComfyDiscordBot(discord.Client):
             hoehe: app_commands.Range[int, 256, 2048] = 1024,
             seed: app_commands.Range[int, -1, 9007199254740991] = -1,
             bilder: app_commands.Range[int, 1, 4] = 1,
+            schritte: app_commands.Range[int, 1, 100] | None = None,
+            cfg: app_commands.Range[float, 0.0, 30.0] | None = None,
             lora: str | None = None,
             lora_staerke: app_commands.Range[float, 0.0, 2.0] | None = None,
             lora_2: str | None = None,
@@ -287,6 +291,8 @@ class ComfyDiscordBot(discord.Client):
                     lora_2_strength=selected_strength_2,
                     lora_3_name=selected_lora_3,
                     lora_3_strength=selected_strength_3,
+                    steps=schritte,
+                    cfg_scale=cfg,
                     filename_prefix=f"Discord/{interaction.user.id}/{profile_name}",
                 )
             except WorkflowError as exc:
@@ -313,10 +319,16 @@ class ComfyDiscordBot(discord.Client):
                 ]
                 omitted = len(files) - len(selected)
                 suffix = f" ({omitted} weitere Ausgabe(n) nicht angehaengt)" if omitted else ""
+                sampling_summary = ""
+                if schritte is not None:
+                    sampling_summary += f" · Schritte `{schritte}`"
+                if cfg is not None:
+                    sampling_summary += f" · CFG `{cfg:g}`"
                 await interaction.edit_original_response(
                     content=(
                         f"Fertig · Seed `{rendered.seed}` · {final_width}×{final_height} · "
-                        f"Workflow `{profile_name}` · LoRAs `{lora_summary}`{suffix}"
+                        f"Workflow `{profile_name}`{sampling_summary} · "
+                        f"LoRAs `{lora_summary}`{suffix}"
                     ),
                     attachments=discord_files,
                 )

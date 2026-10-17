@@ -57,6 +57,8 @@ class WorkflowTests(unittest.TestCase):
                 seed=42,
                 lora_name="chosen.safetensors",
                 lora_strength=1.25,
+                steps=None,
+                cfg_scale=None,
                 filename_prefix="x",
             )
             self.assertEqual(result.seed, 42)
@@ -65,6 +67,54 @@ class WorkflowTests(unittest.TestCase):
             self.assertEqual(result.graph["4"]["inputs"]["lora_name"], "chosen.safetensors")
             self.assertEqual(result.graph["4"]["inputs"]["strength_model"], 1.25)
             self.assertEqual(renderer._template["1"]["inputs"]["text"], "old")
+
+    def test_renderer_applies_steps_and_cfg_when_requested(self) -> None:
+        graph = {
+            "1": {"class_type": "Text", "inputs": {"text": "old"}},
+            "2": {
+                "class_type": "Sampler",
+                "inputs": {"seed": 1, "steps": 25, "cfg": 2.5},
+            },
+            "3": {
+                "class_type": "Latent",
+                "inputs": {"width": 512, "height": 512, "batch_size": 1},
+            },
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "workflow.json"
+            path.write_text(json.dumps(graph), encoding="utf-8")
+            profile = WorkflowProfile(
+                name="sampling-test",
+                description="test",
+                file=path,
+                bindings={
+                    "prompt": Binding("1", "text"),
+                    "seed": Binding("2", "seed"),
+                    "steps": Binding("2", "steps"),
+                    "cfg_scale": Binding("2", "cfg"),
+                    "width": Binding("3", "width"),
+                    "height": Binding("3", "height"),
+                    "batch_size": Binding("3", "batch_size"),
+                },
+            )
+            renderer = WorkflowRenderer(profile)
+            result = renderer.render(
+                prompt="x",
+                negative_prompt=None,
+                width=1024,
+                height=1024,
+                batch_size=1,
+                seed=1,
+                lora_name=None,
+                lora_strength=None,
+                steps=40,
+                cfg_scale=4.5,
+                filename_prefix="x",
+            )
+            self.assertEqual(result.graph["2"]["inputs"]["steps"], 40)
+            self.assertEqual(result.graph["2"]["inputs"]["cfg"], 4.5)
+            self.assertEqual(renderer._template["2"]["inputs"]["steps"], 25)
+            self.assertEqual(renderer._template["2"]["inputs"]["cfg"], 2.5)
 
     def test_ui_workflow_is_rejected_with_actionable_error(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

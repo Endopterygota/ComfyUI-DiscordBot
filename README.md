@@ -97,9 +97,11 @@ In Discord stehen dann zur Verfuegung:
 /video prompt:Eine Drohnenfahrt ueber eine neblige Bergstadt seitenverhaeltnis:16:9 dauer:5 seed:-1
 ```
 
-Fuer Prompt-Enhancement im Parameter `workflow` das Profil `krea2-turbo-enhanced` auswaehlen. Es nutzt den bereits geladenen Qwen/Krea-Textencoder lokal und benoetigt keinen externen API-Key. Ohne Auswahl bleibt `krea2-turbo` der Standard.
+Fuer Prompt-Enhancement im Parameter `workflow` das Profil `krea2-turbo-enhanced` auswaehlen. Es nutzt den bereits geladenen Qwen/Krea-Textencoder lokal und benoetigt keinen externen API-Key. Ohne Auswahl wird `moss-image-sft` als Standard verwendet.
 
 Fuer MOSS-Image im Parameter `workflow` das Profil `moss-image-sft` auswaehlen. MOSS benoetigt Bildgroessen in 16er-Schritten. Der Bot rundet die vorhandenen Seitenverhaeltnis-Presets fuer dieses Profil automatisch auf das naechste gueltige Raster; Krea-Aufloesungen bleiben unveraendert. Das MOSS-Profil besitzt derzeit keine LoRA-Slots, damit nicht versehentlich inkompatible Krea-LoRAs geladen werden.
+
+Mit `schritte` (1 bis 100) und `cfg` (0 bis 30) lassen sich Sampling-Schritte und CFG Scale fuer jedes Bildprofil pro Auftrag ueberschreiben. Bleiben die Felder leer, nutzt der Bot die im Workflow gespeicherten Werte: MOSS standardmaessig 25 Schritte bei CFG 2.5, Krea standardmaessig 8 Schritte bei CFG 1.2.
 
 `seitenverhaeltnis` bietet dieselben acht 1-Megapixel-Formate wie ComfyUIs `ResolutionSelector`: `1:1`, `2:3`, `3:2`, `3:4`, `4:3`, `9:16`, `16:9` und `21:9`. Das ausgewaehlte Format ueberschreibt `breite` und `hoehe`. Ohne Auswahl koennen eigene Werte in 8er-Schritten angegeben werden; `breite:888 hoehe:1184` ist daher ebenfalls gueltig.
 

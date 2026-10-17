@@ -101,6 +101,8 @@ class WorkflowRenderer:
         lora_2_strength: float | None = None,
         lora_3_name: str | None = None,
         lora_3_strength: float | None = None,
+        steps: int | None = None,
+        cfg_scale: float | None = None,
     ) -> RenderedWorkflow:
         if not prompt.strip():
             raise WorkflowError("Der Prompt darf nicht leer sein.")
@@ -111,6 +113,18 @@ class WorkflowRenderer:
             )
         if not 1 <= batch_size <= 4:
             raise WorkflowError("Es sind 1 bis 4 Bilder pro Auftrag erlaubt.")
+        if steps is not None and not 1 <= steps <= 100:
+            raise WorkflowError("Die Schrittzahl muss zwischen 1 und 100 liegen.")
+        if cfg_scale is not None and not 0.0 <= cfg_scale <= 30.0:
+            raise WorkflowError("CFG Scale muss zwischen 0 und 30 liegen.")
+        if steps is not None and "steps" not in self.profile.bindings:
+            raise WorkflowError(
+                f"Der Workflow {self.profile.name!r} unterstuetzt keine eigene Schrittzahl."
+            )
+        if cfg_scale is not None and "cfg_scale" not in self.profile.bindings:
+            raise WorkflowError(
+                f"Der Workflow {self.profile.name!r} unterstuetzt keine eigene CFG Scale."
+            )
 
         actual_seed = secrets.randbelow(2**53) if seed < 0 else seed
         values: dict[str, Any] = {
@@ -135,6 +149,10 @@ class WorkflowRenderer:
             values["lora_3_name"] = lora_3_name
         if lora_3_strength is not None:
             values["lora_3_strength"] = lora_3_strength
+        if steps is not None:
+            values["steps"] = steps
+        if cfg_scale is not None:
+            values["cfg_scale"] = cfg_scale
 
         graph = self._bind_values(values)
         return RenderedWorkflow(graph=graph, seed=actual_seed)

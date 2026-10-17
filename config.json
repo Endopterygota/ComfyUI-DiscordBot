@@ -1,5 +1,5 @@
 {
-  "default_workflow": "krea2-turbo",
+  "default_workflow": "moss-image-sft",
   "default_video_workflow": "minimax-h3-t2v",
   "max_prompt_length": 4000,
   "max_files_per_message": 10,
@@ -14,6 +14,8 @@
         "height": { "node": "5", "input": "height" },
         "batch_size": { "node": "5", "input": "batch_size" },
         "seed": { "node": "3", "input": "seed" },
+        "steps": { "node": "3", "input": "steps" },
+        "cfg_scale": { "node": "3", "input": "cfg" },
         "lora_name": { "node": "51", "input": "lora_name" },
         "lora_strength": { "node": "51", "input": "strength_model" },
         "lora_2_name": { "node": "52", "input": "lora_name" },
@@ -33,6 +35,8 @@
         "height": { "node": "5", "input": "height" },
         "batch_size": { "node": "5", "input": "batch_size" },
         "seed": { "node": "3", "input": "seed" },
+        "steps": { "node": "3", "input": "steps" },
+        "cfg_scale": { "node": "3", "input": "cfg" },
         "lora_name": { "node": "51", "input": "lora_name" },
         "lora_strength": { "node": "51", "input": "strength_model" },
         "lora_2_name": { "node": "52", "input": "lora_name" },
@@ -53,6 +57,8 @@
         "height": { "node": "6", "input": "height" },
         "batch_size": { "node": "6", "input": "batch_size" },
         "seed": { "node": "8", "input": "seed" },
+        "steps": { "node": "8", "input": "steps" },
+        "cfg_scale": { "node": "8", "input": "cfg" },
         "filename_prefix": { "node": "10", "input": "filename_prefix" }
       }
     }
