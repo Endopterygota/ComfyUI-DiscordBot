@@ -96,6 +96,20 @@ Zuerst die vorhandene AMD-ComfyUI-Installation mit deren funktionierendem Startb
 .\scripts\start-bot.ps1
 ```
 
+### Automatisch mit Windows starten
+
+Ollama traegt sich bei der Windows-Installation normalerweise selbst in den Benutzer-Autostart ein. Fuer den Discord-Bot registriert das folgende Skript eine unsichtbare Aufgabe bei der Anmeldung und startet sie sofort:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\register-autostart.ps1" -StartNow
+```
+
+Die Aufgabe verwendet immer die neueste EXE aus `dist`, startet bei einem Fehler bis zu zehnmal im Minutenabstand neu und schreibt die aktuelle Ausgabe nach `logs\bot-autostart.log`. Entfernen laesst sie sich mit:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\unregister-autostart.ps1"
+```
+
 In Discord stehen dann zur Verfuegung:
 
 ```text
