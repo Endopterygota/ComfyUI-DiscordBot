@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 
@@ -30,6 +31,32 @@ RESOLUTION_PRESETS = (
 )
 
 RESOLUTION_PRESETS_BY_VALUE = {preset.value: preset for preset in RESOLUTION_PRESETS}
+
+
+IMAGE_RESOLUTION_CHOICES = (
+    "512x512",
+    "768x768",
+    "1024x1024",
+    "1280x1280",
+    "1536x1536",
+    "768x1024",
+    "1024x768",
+    "888x1184",
+    "1184x888",
+    "768x1368",
+    "1368x768",
+)
+
+
+def parse_image_resolution(value: str) -> tuple[int, int]:
+    match = re.fullmatch(r"\s*(\d{3,4})\s*[xX×]\s*(\d{3,4})\s*", value)
+    if match is None:
+        raise ValueError("Aufloesung muss im Format BREITExHOEHE stehen, z. B. 1024x1024.")
+
+    width, height = (int(part) for part in match.groups())
+    if not 256 <= width <= 2048 or not 256 <= height <= 2048:
+        raise ValueError("Breite und Hoehe muessen jeweils zwischen 256 und 2048 liegen.")
+    return width, height
 
 
 # MiniMax H3 uses a native 768 px short edge, a 768x1344 area cap, and
