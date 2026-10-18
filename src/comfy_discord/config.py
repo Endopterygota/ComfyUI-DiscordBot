@@ -32,6 +32,9 @@ class Settings:
     discord_token: str | None
     discord_guild_id: int | None
     comfy_url: str
+    ollama_url: str
+    ollama_model: str
+    ollama_timeout_seconds: int
     allowed_channel_ids: frozenset[int]
     max_parallel_jobs: int
     generation_timeout_seconds: int
@@ -184,11 +187,27 @@ def load_settings(
     if not comfy_url.startswith(("http://", "https://")):
         raise ConfigError("COMFYUI_URL muss mit http:// oder https:// beginnen.")
 
+    ollama_url = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434").strip().rstrip("/")
+    if not ollama_url.startswith(("http://", "https://")):
+        raise ConfigError("OLLAMA_URL muss mit http:// oder https:// beginnen.")
+    ollama_model = os.environ.get(
+        "OLLAMA_MODEL",
+        "huihui_ai/qwen3-abliterated:8b",
+    ).strip()
+    if not ollama_model:
+        raise ConfigError("OLLAMA_MODEL darf nicht leer sein.")
+
     return Settings(
         project_dir=root,
         discord_token=token,
         discord_guild_id=_optional_int(os.environ.get("DISCORD_GUILD_ID"), "DISCORD_GUILD_ID"),
         comfy_url=comfy_url,
+        ollama_url=ollama_url,
+        ollama_model=ollama_model,
+        ollama_timeout_seconds=_positive_int(
+            os.environ.get("OLLAMA_TIMEOUT_SECONDS", "600"),
+            "OLLAMA_TIMEOUT_SECONDS",
+        ),
         allowed_channel_ids=_id_set(os.environ.get("ALLOWED_CHANNEL_IDS"), "ALLOWED_CHANNEL_IDS"),
         max_parallel_jobs=_positive_int(os.environ.get("MAX_PARALLEL_JOBS", "1"), "MAX_PARALLEL_JOBS"),
         generation_timeout_seconds=_positive_int(

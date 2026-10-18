@@ -2,6 +2,8 @@
 
 Ein lokaler Discord-Bot, der Slash-Commands in ComfyUI-API-Workflows uebersetzt und erzeugte Bilder oder Videos wieder in Discord hochlaedt.
 
+Zusaetzlich stellt `/text` das lokal installierte Ollama-Modell `huihui_ai/qwen3-abliterated:8b` in Discord bereit. Die Anfrage bleibt auf dem eigenen Rechner; fuer das lokale Modell ist kein Cloud-API-Key erforderlich.
+
 Der Bot ist GPU-unabhaengig: AMD/CUDA/DirectML/ROCm betrifft nur die vorhandene ComfyUI-Installation. ComfyUI sollte separat und lokal unter `127.0.0.1:8188` laufen.
 
 ## Enthaltener Krea-2-Workflow
@@ -79,6 +81,9 @@ Danach `.env` bearbeiten:
 DISCORD_TOKEN=dein_geheimes_bot_token
 DISCORD_GUILD_ID=deine_server_id
 COMFYUI_URL=http://127.0.0.1:8188
+OLLAMA_URL=http://127.0.0.1:11434
+OLLAMA_MODEL=huihui_ai/qwen3-abliterated:8b
+OLLAMA_TIMEOUT_SECONDS=600
 ```
 
 Das Token niemals in Discord posten oder committen.
@@ -95,9 +100,12 @@ In Discord stehen dann zur Verfuegung:
 
 ```text
 /status
+/text prompt:Erklaere mir in drei Saetzen, was CFG Scale bedeutet
 /bild prompt:... seitenverhaeltnis:3:4 Portraet Standard (888x1184) seed:-1 bilder:1
 /video prompt:Eine Drohnenfahrt ueber eine neblige Bergstadt seitenverhaeltnis:16:9 dauer:5 seed:-1
 ```
+
+`/text` sendet den Prompt an den lokalen Ollama-Server. Optional koennen `system`, `temperatur` und `max_tokens` gesetzt werden. Laengere Antworten teilt der Bot automatisch auf mehrere Discord-Nachrichten auf. Ollama muss im Hintergrund laufen; bei der Windows-App geschieht das normalerweise automatisch. Bild-, Video- und Textauftraege teilen sich standardmaessig denselben GPU-Warteschlangenplatz, damit die Modelle nicht gleichzeitig den Grafikspeicher belegen.
 
 Fuer Prompt-Enhancement im Parameter `workflow` je nach Bildmodell `krea2-turbo-enhanced` oder `moss-image-sft-enhanced` auswaehlen. Beide nutzen den bereits installierten Qwen/Krea-Textencoder lokal und benoetigen keinen externen API-Key. Ohne Auswahl wird weiterhin `moss-image-sft` als Standard verwendet.
 

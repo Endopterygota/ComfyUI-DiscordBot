@@ -30,6 +30,7 @@ def main() -> None:
         token_status = "gesetzt" if settings.discord_token else "fehlt noch"
         print("Konfiguration ist gueltig.")
         print(f"ComfyUI: {settings.comfy_url}")
+        print(f"Ollama: {settings.ollama_url} ({settings.ollama_model})")
         print(f"Discord-Token: {token_status}")
         print(f"Workflows: {', '.join(settings.workflows)}")
         if settings.video_workflows:

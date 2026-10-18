@@ -12,6 +12,7 @@ from discord import app_commands
 
 from .comfy import ComfyClient, ComfyError
 from .config import Settings
+from .ollama import OllamaClient, OllamaError, split_discord_text
 from .resolutions import (
     RESOLUTION_PRESETS,
     RESOLUTION_PRESETS_BY_VALUE,
@@ -26,10 +27,18 @@ LOGGER = logging.getLogger(__name__)
 
 class ComfyDiscordBot(discord.Client):
     def __init__(self, settings: Settings):
-        super().__init__(intents=discord.Intents.none())
+        super().__init__(
+            intents=discord.Intents.none(),
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
         self.settings = settings
         self.tree = app_commands.CommandTree(self)
         self.comfy = ComfyClient(settings.comfy_url, settings.generation_timeout_seconds)
+        self.ollama = OllamaClient(
+            settings.ollama_url,
+            settings.ollama_model,
+            settings.ollama_timeout_seconds,
+        )
         self.renderers = {name: WorkflowRenderer(profile) for name, profile in settings.workflows.items()}
         self.video_renderers = {
             name: VideoWorkflowRenderer(profile)
@@ -46,6 +55,7 @@ class ComfyDiscordBot(discord.Client):
 
     async def setup_hook(self) -> None:
         await self.comfy.start()
+        await self.ollama.start()
         if self.settings.discord_guild_id is not None:
             guild = discord.Object(id=self.settings.discord_guild_id)
             self.tree.copy_global_to(guild=guild)
@@ -57,6 +67,7 @@ class ComfyDiscordBot(discord.Client):
 
     async def close(self) -> None:
         await self.comfy.close()
+        await self.ollama.close()
         await super().close()
 
     async def on_ready(self) -> None:
@@ -155,6 +166,85 @@ class ComfyDiscordBot(discord.Client):
         return special + choices
 
     def _register_commands(self) -> None:
+        @self.tree.command(name="text", description="Fragt das lokale Qwen-Modell ueber Ollama")
+        @app_commands.describe(
+            prompt="Deine Frage oder Anweisung an das lokale Modell",
+            system="Optionaler System-Prompt fuer Verhalten oder Rolle",
+            temperatur="Kreativitaet von 0 (stabil) bis 2 (variabel)",
+            max_tokens="Maximale Laenge der Antwort in Tokens",
+        )
+        async def text_command(
+            interaction: discord.Interaction,
+            prompt: app_commands.Range[str, 1, 4000],
+            system: app_commands.Range[str, 1, 2000] | None = None,
+            temperatur: app_commands.Range[float, 0.0, 2.0] = 0.7,
+            max_tokens: app_commands.Range[int, 64, 4096] = 1024,
+        ) -> None:
+            if not self._channel_allowed(interaction):
+                await interaction.response.send_message(
+                    "Dieser Kanal ist fuer den Bot nicht freigegeben.",
+                    ephemeral=True,
+                )
+                return
+            if len(prompt) > self.settings.max_prompt_length:
+                await interaction.response.send_message("Der Prompt ist zu lang.", ephemeral=True)
+                return
+
+            await interaction.response.defer(thinking=True)
+            position = await self._queue_enter()
+            await interaction.edit_original_response(
+                content=f"Textauftrag angenommen (Warteschlangenposition: {position})."
+            )
+
+            acquired = False
+            try:
+                await self.gpu_slots.acquire()
+                acquired = True
+                await self._queue_activate()
+                await interaction.edit_original_response(
+                    content=f"Ollama erzeugt die Antwort mit `{self.settings.ollama_model}` …"
+                )
+                reply = await self.ollama.chat(
+                    prompt,
+                    system_prompt=system,
+                    temperature=temperatur,
+                    max_tokens=max_tokens,
+                )
+                chunks = split_discord_text(reply.content)
+                if not chunks:
+                    raise OllamaError("Ollama hat eine leere Antwort geliefert.")
+
+                metadata: list[str] = []
+                if reply.response_tokens is not None:
+                    metadata.append(f"{reply.response_tokens} Tokens")
+                if reply.total_duration_seconds is not None:
+                    metadata.append(f"{reply.total_duration_seconds:.1f}s")
+                details = f" · {' · '.join(metadata)}" if metadata else ""
+                header = f"**{self.settings.ollama_model}**{details}\n"
+                await interaction.edit_original_response(content=f"{header}{chunks[0]}")
+                for chunk in chunks[1:]:
+                    await interaction.followup.send(
+                        chunk,
+                        allowed_mentions=discord.AllowedMentions.none(),
+                    )
+            except OllamaError as exc:
+                LOGGER.warning("Ollama-Textgenerierung fehlgeschlagen: %s", exc)
+                await interaction.edit_original_response(
+                    content=f"Textgenerierung fehlgeschlagen:\n```\n{str(exc)[:1700]}\n```"
+                )
+            except Exception as exc:
+                LOGGER.exception("Unerwarteter Fehler bei der Ollama-Textgenerierung")
+                await interaction.edit_original_response(
+                    content=(
+                        f"Unerwarteter Fehler: `{type(exc).__name__}`. "
+                        "Details stehen im Bot-Fenster."
+                    )
+                )
+            finally:
+                if acquired:
+                    await self._queue_leave()
+                    self.gpu_slots.release()
+
         @self.tree.command(name="bild", description="Erzeugt Bilder mit ComfyUI")
         @app_commands.describe(
             prompt="Was soll erzeugt werden?",
