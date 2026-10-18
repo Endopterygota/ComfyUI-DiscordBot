@@ -12,7 +12,7 @@ from discord import app_commands
 
 from .comfy import ComfyClient, ComfyError
 from .config import Settings
-from .ollama import OllamaClient, OllamaError, split_discord_text
+from .ollama import OllamaClient, OllamaError, prepare_embed_text
 from .resolutions import (
     RESOLUTION_PRESETS,
     RESOLUTION_PRESETS_BY_VALUE,
@@ -210,23 +210,32 @@ class ComfyDiscordBot(discord.Client):
                     temperature=temperatur,
                     max_tokens=max_tokens,
                 )
-                chunks = split_discord_text(reply.content)
-                if not chunks:
-                    raise OllamaError("Ollama hat eine leere Antwort geliefert.")
-
                 metadata: list[str] = []
                 if reply.response_tokens is not None:
                     metadata.append(f"{reply.response_tokens} Tokens")
                 if reply.total_duration_seconds is not None:
                     metadata.append(f"{reply.total_duration_seconds:.1f}s")
-                details = f" · {' · '.join(metadata)}" if metadata else ""
-                header = f"**{self.settings.ollama_model}**{details}\n"
-                await interaction.edit_original_response(content=f"{header}{chunks[0]}")
-                for chunk in chunks[1:]:
-                    await interaction.followup.send(
-                        chunk,
-                        allowed_mentions=discord.AllowedMentions.none(),
+                embed_text, needs_file = prepare_embed_text(reply.content)
+                embed = discord.Embed(
+                    title=self.settings.ollama_model,
+                    description=embed_text,
+                    color=discord.Color.blurple(),
+                )
+                if metadata:
+                    embed.set_footer(text=" · ".join(metadata))
+                attachments = []
+                if needs_file:
+                    attachments.append(
+                        discord.File(
+                            io.BytesIO(reply.content.encode("utf-8")),
+                            filename="ollama-antwort.txt",
+                        )
                     )
+                await interaction.edit_original_response(
+                    content=None,
+                    embed=embed,
+                    attachments=attachments,
+                )
             except OllamaError as exc:
                 LOGGER.warning("Ollama-Textgenerierung fehlgeschlagen: %s", exc)
                 await interaction.edit_original_response(

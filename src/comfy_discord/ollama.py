@@ -19,26 +19,21 @@ class OllamaReply:
     total_duration_seconds: float | None
 
 
-def split_discord_text(text: str, *, limit: int = 1900) -> list[str]:
-    """Split text into Discord-sized messages, preferring natural boundaries."""
-    remaining = text.strip()
-    if not remaining:
-        return []
+def prepare_embed_text(text: str, *, limit: int = 4096) -> tuple[str, bool]:
+    """Fit an Ollama reply into one embed and signal whether a file is needed."""
+    cleaned = text.strip()
+    if len(cleaned) <= limit:
+        return cleaned, False
 
-    chunks: list[str] = []
-    while len(remaining) > limit:
-        newline = remaining.rfind("\n", 0, limit + 1)
-        space = remaining.rfind(" ", 0, limit + 1)
-        cut = max(newline, space)
-        if cut < limit // 2:
-            cut = limit
-        elif remaining[cut] in "\n ":
-            cut += 1
-        chunks.append(remaining[:cut].rstrip())
-        remaining = remaining[cut:].lstrip()
-    if remaining:
-        chunks.append(remaining)
-    return chunks
+    suffix = "\n\n… Vollstaendige Antwort siehe angehaengte Datei."
+    preview_limit = limit - len(suffix)
+    cut = max(
+        cleaned.rfind("\n", 0, preview_limit + 1),
+        cleaned.rfind(" ", 0, preview_limit + 1),
+    )
+    if cut < preview_limit // 2:
+        cut = preview_limit
+    return f"{cleaned[:cut].rstrip()}{suffix}", True
 
 
 class OllamaClient:

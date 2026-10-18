@@ -105,7 +105,7 @@ In Discord stehen dann zur Verfuegung:
 /video prompt:Eine Drohnenfahrt ueber eine neblige Bergstadt seitenverhaeltnis:16:9 dauer:5 seed:-1
 ```
 
-`/text` sendet den Prompt an den lokalen Ollama-Server. Optional koennen `system`, `temperatur` und `max_tokens` gesetzt werden. Laengere Antworten teilt der Bot automatisch auf mehrere Discord-Nachrichten auf. Ollama muss im Hintergrund laufen; bei der Windows-App geschieht das normalerweise automatisch. Bild-, Video- und Textauftraege teilen sich standardmaessig denselben GPU-Warteschlangenplatz, damit die Modelle nicht gleichzeitig den Grafikspeicher belegen.
+`/text` sendet den Prompt an den lokalen Ollama-Server. Optional koennen `system`, `temperatur` und `max_tokens` gesetzt werden. Die Antwort erscheint immer als eine einzelne Discord-Nachricht. Passt sie nicht vollstaendig in einen Discord-Embed, wird der Rest in derselben Nachricht als `ollama-antwort.txt` angehaengt. Ollama muss im Hintergrund laufen; bei der Windows-App geschieht das normalerweise automatisch. Bild-, Video- und Textauftraege teilen sich standardmaessig denselben GPU-Warteschlangenplatz, damit die Modelle nicht gleichzeitig den Grafikspeicher belegen.
 
 Fuer Prompt-Enhancement im Parameter `workflow` je nach Bildmodell `krea2-turbo-enhanced` oder `moss-image-sft-enhanced` auswaehlen. Beide nutzen den bereits installierten Qwen/Krea-Textencoder lokal und benoetigen keinen externen API-Key. Ohne Auswahl wird weiterhin `moss-image-sft` als Standard verwendet.
 

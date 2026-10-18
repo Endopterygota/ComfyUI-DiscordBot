@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from comfy_discord.ollama import OllamaClient, OllamaError, split_discord_text
+from comfy_discord.ollama import OllamaClient, OllamaError, prepare_embed_text
 
 
 class OllamaTests(unittest.TestCase):
@@ -24,11 +24,16 @@ class OllamaTests(unittest.TestCase):
         with self.assertRaisesRegex(OllamaError, "leere Antwort"):
             OllamaClient._parse_reply({"message": {"content": "  "}})
 
-    def test_long_reply_is_split_for_discord(self) -> None:
-        text = ("Ein sinnvoller Satz mit mehreren Woertern. " * 150).strip()
-        chunks = split_discord_text(text, limit=200)
-        self.assertGreater(len(chunks), 1)
-        self.assertTrue(all(1 <= len(chunk) <= 200 for chunk in chunks))
+    def test_reply_fits_in_one_embed(self) -> None:
+        text, needs_file = prepare_embed_text("Eine kurze Antwort.", limit=200)
+        self.assertEqual(text, "Eine kurze Antwort.")
+        self.assertFalse(needs_file)
+
+    def test_oversized_reply_uses_preview_and_attachment(self) -> None:
+        text, needs_file = prepare_embed_text("Wort " * 100, limit=200)
+        self.assertLessEqual(len(text), 200)
+        self.assertTrue(text.endswith("Vollstaendige Antwort siehe angehaengte Datei."))
+        self.assertTrue(needs_file)
 
 
 if __name__ == "__main__":
