@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import re
+import math
 from dataclasses import dataclass
 
 
@@ -14,6 +14,10 @@ class ResolutionPreset:
     @property
     def discord_name(self) -> str:
         return f"{self.value} {self.label} ({self.width}x{self.height})"
+
+    @property
+    def image_discord_name(self) -> str:
+        return f"{self.value} {self.label}"
 
 
 # These are the 1 MP results produced by ComfyUI's ResolutionSelector with
@@ -33,30 +37,21 @@ RESOLUTION_PRESETS = (
 RESOLUTION_PRESETS_BY_VALUE = {preset.value: preset for preset in RESOLUTION_PRESETS}
 
 
-IMAGE_RESOLUTION_CHOICES = (
-    "512x512",
-    "768x768",
-    "1024x1024",
-    "1280x1280",
-    "1536x1536",
-    "768x1024",
-    "1024x768",
-    "888x1184",
-    "1184x888",
-    "768x1368",
-    "1368x768",
-)
+def dimensions_for_megapixels(
+    width: int,
+    height: int,
+    megapixels: float,
+) -> tuple[int, int]:
+    """Scale an aspect-ratio canvas to the requested diffusion megapixel area."""
+    if width < 1 or height < 1:
+        raise ValueError("Breite und Hoehe muessen positiv sein.")
+    if megapixels <= 0:
+        raise ValueError("Megapixel muss groesser als 0 sein.")
 
-
-def parse_image_resolution(value: str) -> tuple[int, int]:
-    match = re.fullmatch(r"\s*(\d{3,4})\s*[xX×]\s*(\d{3,4})\s*", value)
-    if match is None:
-        raise ValueError("Aufloesung muss im Format BREITExHOEHE stehen, z. B. 1024x1024.")
-
-    width, height = (int(part) for part in match.groups())
-    if not 256 <= width <= 2048 or not 256 <= height <= 2048:
-        raise ValueError("Breite und Hoehe muessen jeweils zwischen 256 und 2048 liegen.")
-    return width, height
+    # Image-generation tools conventionally treat 1024x1024 as a 1 MP canvas.
+    target_pixels = megapixels * 1024 * 1024
+    scale = math.sqrt(target_pixels / (width * height))
+    return max(1, round(width * scale)), max(1, round(height * scale))
 
 
 # MiniMax H3 uses a native 768 px short edge, a 768x1344 area cap, and

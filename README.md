@@ -115,7 +115,7 @@ In Discord stehen dann zur Verfuegung:
 ```text
 /status
 /text prompt:Erklaere mir in drei Saetzen, was CFG Scale bedeutet
-/bild prompt:... aufloesung:888x1184 seed:-1 bilder:1
+/bild prompt:... seitenverhaeltnis:3:4 megapixel:1.5 seed:-1 bilder:1
 /video prompt:Eine Drohnenfahrt ueber eine neblige Bergstadt seitenverhaeltnis:16:9 dauer:5 seed:-1
 ```
 
@@ -127,9 +127,7 @@ Fuer MOSS-Image im Parameter `workflow` das Profil `moss-image-sft` auswaehlen. 
 
 Mit `schritte` (1 bis 100) und `cfg` (0 bis 30) lassen sich Sampling-Schritte und CFG Scale fuer jedes Bildprofil pro Auftrag ueberschreiben. Bleiben die Felder leer, nutzt der Bot die im Workflow gespeicherten Werte: MOSS standardmaessig 25 Schritte bei CFG 2.5, Krea standardmaessig 8 Schritte bei CFG 1.2.
 
-`seitenverhaeltnis` bietet dieselben acht 1-Megapixel-Formate wie ComfyUIs `ResolutionSelector`: `1:1`, `2:3`, `3:2`, `3:4`, `4:3`, `9:16`, `16:9` und `21:9`. Das ausgewaehlte Format ueberschreibt `breite` und `hoehe`. Ohne Auswahl koennen eigene Werte in 8er-Schritten angegeben werden; `breite:888 hoehe:1184` ist daher ebenfalls gueltig.
-
-Mit `aufloesung` kann die Bildgroesse bequemer in einem einzigen Feld angegeben werden, beispielsweise `1024x1024`, `888x1184` oder `1368x768`. Das Feld bietet gaengige Werte als Autovervollstaendigung, akzeptiert aber auch eigene Groessen zwischen 256 und 2048 Pixeln. `aufloesung` hat Vorrang vor `seitenverhaeltnis`, `breite` und `hoehe`. Falls ein Workflow ein 8er- oder 16er-Raster verlangt, rundet der Bot auf die naechste gueltige Groesse und zeigt die tatsaechlich verwendeten Abmessungen in der fertigen Nachricht an.
+`seitenverhaeltnis` steuert ausschliesslich die Bildform. Zur Auswahl stehen `1:1`, `2:3`, `3:2`, `3:4`, `4:3`, `9:16`, `16:9` und `21:9`; Standard ist `1:1`. Der separate Parameter `megapixel` steuert die Bildflaeche zwischen 0.25 und 2 MP, standardmaessig 1 MP. Beispielsweise kombiniert `seitenverhaeltnis:3:4 megapixel:1.5` ein 3:4-Portraet mit ungefaehr 1.5 MP. Der Bot rundet das Ergebnis auf das vom Workflow verlangte 8er- oder 16er-Raster und zeigt die tatsaechlich verwendeten Abmessungen in der fertigen Nachricht an.
 
 Beim Parameter `lora` fragt der Bot automatisch `ComfyUI/models/loras` ab und zeigt die aktuell installierten Dateien als Discord-Autovervollstaendigung. `Keine LoRA` setzt die Staerke auf 0; ein leeres Feld oder `Workflow-Standard beibehalten` nutzt die im Workflow hinterlegte LoRA. Mit `lora_staerke` kann ein Wert von 0 bis 2 gewaehlt werden. Nach Aenderungen im LoRA-Ordner wird die Liste innerhalb von 30 Sekunden aktualisiert.
 

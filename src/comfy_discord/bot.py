@@ -14,12 +14,11 @@ from .comfy import ComfyClient, ComfyError
 from .config import Settings
 from .ollama import OllamaClient, OllamaError, prepare_embed_text
 from .resolutions import (
-    IMAGE_RESOLUTION_CHOICES,
     RESOLUTION_PRESETS,
     RESOLUTION_PRESETS_BY_VALUE,
     VIDEO_RESOLUTION_PRESETS,
     VIDEO_RESOLUTION_PRESETS_BY_VALUE,
-    parse_image_resolution,
+    dimensions_for_megapixels,
 )
 from .workflow import VideoWorkflowRenderer, WorkflowError, WorkflowRenderer
 
@@ -260,10 +259,8 @@ class ComfyDiscordBot(discord.Client):
         @app_commands.describe(
             prompt="Was soll erzeugt werden?",
             negative="Optionaler negativer Prompt; leer behaelt den Workflow-Standard",
-            seitenverhaeltnis="Standardformat; ueberschreibt Breite und Hoehe",
-            aufloesung="Breite x Hoehe, z. B. 1024x1024; hat hoechste Prioritaet",
-            breite="Eigene Bildbreite, durch 8 teilbar",
-            hoehe="Eigene Bildhoehe, durch 8 teilbar",
+            seitenverhaeltnis="Form des Bildes, unabhaengig von der Pixelanzahl",
+            megapixel="Bildgroesse von 0.25 bis 2 MP; Standard ist 1 MP",
             seed="-1 fuer zufaelligen Seed",
             bilder="Anzahl der Bilder (1 bis 4)",
             schritte="Sampling-Schritte; leer behaelt den Workflow-Standard",
@@ -278,7 +275,7 @@ class ComfyDiscordBot(discord.Client):
         )
         @app_commands.choices(
             seitenverhaeltnis=[
-                app_commands.Choice(name=preset.discord_name, value=preset.value)
+                app_commands.Choice(name=preset.image_discord_name, value=preset.value)
                 for preset in RESOLUTION_PRESETS
             ]
         )
@@ -286,10 +283,8 @@ class ComfyDiscordBot(discord.Client):
             interaction: discord.Interaction,
             prompt: app_commands.Range[str, 1, 4000],
             negative: app_commands.Range[str, 0, 4000] | None = None,
-            seitenverhaeltnis: str | None = None,
-            aufloesung: str | None = None,
-            breite: app_commands.Range[int, 256, 2048] = 1024,
-            hoehe: app_commands.Range[int, 256, 2048] = 1024,
+            seitenverhaeltnis: str = "1:1",
+            megapixel: app_commands.Range[float, 0.25, 2.0] = 1.0,
             seed: app_commands.Range[int, -1, 9007199254740991] = -1,
             bilder: app_commands.Range[int, 1, 4] = 1,
             schritte: app_commands.Range[int, 1, 100] | None = None,
@@ -318,21 +313,17 @@ class ComfyDiscordBot(discord.Client):
                 )
                 return
 
-            final_width, final_height = breite, hoehe
-            if aufloesung is not None:
-                try:
-                    final_width, final_height = parse_image_resolution(aufloesung)
-                except ValueError as exc:
-                    await interaction.response.send_message(str(exc), ephemeral=True)
-                    return
-            elif seitenverhaeltnis is not None:
-                preset = RESOLUTION_PRESETS_BY_VALUE.get(seitenverhaeltnis)
-                if preset is None:
-                    await interaction.response.send_message(
-                        "Dieses Standardformat ist nicht bekannt.", ephemeral=True
-                    )
-                    return
-                final_width, final_height = preset.width, preset.height
+            preset = RESOLUTION_PRESETS_BY_VALUE.get(seitenverhaeltnis)
+            if preset is None:
+                await interaction.response.send_message(
+                    "Dieses Standardformat ist nicht bekannt.", ephemeral=True
+                )
+                return
+            final_width, final_height = dimensions_for_megapixels(
+                preset.width,
+                preset.height,
+                megapixel,
+            )
 
             final_width, final_height = renderer.normalize_dimensions(
                 final_width,
@@ -465,19 +456,6 @@ class ComfyDiscordBot(discord.Client):
                 app_commands.Choice(name=f"{name} – {profile.description}"[:100], value=name)
                 for name, profile in self.settings.workflows.items()
                 if current in name.casefold() or current in profile.description.casefold()
-            ][:25]
-
-        @image_command.autocomplete("aufloesung")
-        async def image_resolution_autocomplete(
-            interaction: discord.Interaction,
-            current: str,
-        ) -> list[app_commands.Choice[str]]:
-            del interaction
-            query = current.casefold().replace("×", "x").replace(" ", "")
-            return [
-                app_commands.Choice(name=resolution, value=resolution)
-                for resolution in IMAGE_RESOLUTION_CHOICES
-                if query in resolution.casefold()
             ][:25]
 
         @image_command.autocomplete("lora")
